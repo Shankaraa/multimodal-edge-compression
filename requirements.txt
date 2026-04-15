@@ -1,0 +1,8 @@
+requests>=2.32.0
+soundfile>=0.12.1
+jiwer>=3.0.4
+datasets>=2.18.0
+codecarbon>=2.3.5
+PyYAML>=6.0.2
+huggingface-hub>=0.22.0
+numpy>=1.26.0

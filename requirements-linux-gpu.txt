@@ -1,0 +1,16 @@
+# Install the generic utilities first:
+#   pip install -r requirements.txt
+#
+# Then, inside Linux or WSL2, install the runtime stack below. `vllm` is left as a manual
+# install because the guide requires the nightly wheel and an extra index URL.
+
+mistral_common[audio]>=1.9.0
+transformers>=5.2.0
+auto-gptq
+optimum
+bitsandbytes
+GPTQModel
+llmcompressor
+
+# Manual step for vLLM nightly:
+# pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
