@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import site
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -61,6 +63,48 @@ def build_command(model_path: str, config: dict[str, Any], host: str | None, por
     return command
 
 
+def build_launch_env() -> dict[str, str]:
+    env = os.environ.copy()
+
+    if os.name != "posix":
+        return env
+
+    candidate_dirs: list[str] = []
+    seen: set[str] = set()
+
+    for root in site.getsitepackages():
+        site_root = Path(root)
+        direct_paths = [
+            site_root / "torch" / "lib",
+            site_root / "nvidia" / "cu12" / "lib",
+            site_root / "nvidia" / "cu13" / "lib",
+        ]
+        nvidia_root = site_root / "nvidia"
+        if nvidia_root.is_dir():
+            direct_paths.extend(sorted(nvidia_root.glob("*/lib")))
+
+        for path in direct_paths:
+            if not path.is_dir():
+                continue
+            resolved = str(path.resolve())
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            candidate_dirs.append(resolved)
+
+    existing = [entry for entry in env.get("LD_LIBRARY_PATH", "").split(":") if entry]
+    merged: list[str] = []
+    for entry in candidate_dirs + existing:
+        if entry in merged:
+            continue
+        merged.append(entry)
+
+    if merged:
+        env["LD_LIBRARY_PATH"] = ":".join(merged)
+
+    return env
+
+
 def main() -> int:
     args = parse_args()
     import yaml
@@ -75,7 +119,7 @@ def main() -> int:
     if args.dry_run:
         return 0
 
-    completed = subprocess.run(command, check=False)
+    completed = subprocess.run(command, check=False, env=build_launch_env())
     return completed.returncode
 
 

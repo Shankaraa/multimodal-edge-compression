@@ -1,6 +1,7 @@
 dtype: auto
 served_model_name: voxtral-realtime
-max_model_len: 16384
+# Fits the local 16 GB RTX 5080 WSL baseline more reliably than the guide default.
+max_model_len: 8192
 gpu_memory_utilization: 0.90
 compilation_config:
   cudagraph_mode: PIECEWISE

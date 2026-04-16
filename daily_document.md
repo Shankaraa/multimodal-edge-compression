@@ -169,30 +169,69 @@ Additional consistency update:
 
 This keeps the server-side model name aligned with the client-side scripts.
 
+### 13. Prepared GitHub remote and pushed the project branch
+
+- The repository remote was updated to:
+  - `https://github.com/Shankaraa/multimodal-edge-compression.git`
+- A working branch named `shankara` was created locally.
+- The scaffold and helper scripts were committed and pushed successfully after GitHub CLI
+  authentication was completed in WSL.
+- Large model artifacts remain excluded from version control through `.gitignore`, including:
+  - `*.pt`
+  - `*.pth`
+  - `*.bin`
+  - `*.safetensors`
+
+### 14. Completed the local Voxtral model download
+
+- The full model download completed successfully in WSL.
+- The model directory now contains the expected metadata files plus both large weight files:
+  - `consolidated.safetensors`
+  - `model.safetensors`
+- Verified local model directory size:
+  - about `17 GB`
+- Confirmed model location:
+  - Windows path: `C:\Users\ASUS\Music\Fine_tuning\models\voxtral-realtime`
+  - WSL path: `/mnt/c/Users/ASUS/Music/Fine_tuning/models/voxtral-realtime`
+
+### 15. Attempted the BF16 baseline launch and identified a runtime mismatch
+
+- The BF16 baseline launch was attempted after the model became available locally.
+- Torch in the WSL baseline environment reports:
+  - version `2.11.0`
+  - CUDA runtime `13.0`
+  - CUDA available: `True`
+- The current installed `vllm` package is:
+  - `0.19.1rc1.dev300+g29e5d1020`
+- The server did not start because the current `vllm` native extension is trying to load:
+  - `libcudart.so.12`
+- This indicates the installed `vllm` build does not match the CUDA 13 Torch/runtime stack in
+  the current WSL environment.
+- Result:
+  - model download is complete,
+  - baseline server launch is blocked until the `vllm` install is rebuilt or replaced with a
+    CUDA 13 compatible wheel.
+
 ## Important Findings From Today
 
 - The project is now structurally ready for baseline inference and evaluation.
 - WSL is usable and already configured with Ubuntu 22.04.
 - The Linux runtime is the right place to run Voxtral and `vLLM`.
-- The baseline environment appears healthy enough to proceed directly to model download and
-  serving.
+- The model download has completed successfully and is available locally.
+- The remaining blocker is not storage or download state, but a CUDA build mismatch inside the
+  WSL `vllm` environment.
 - The guide strongly supports decoder-first compression and warns against aggressive encoder
   quantization.
 
 ## Model Download Status
 
-- The model download was started from WSL more than once.
+- The model download was started from WSL more than once earlier in the day.
 - Some earlier attempts were manually interrupted, but the local Hugging Face cache preserved
-  partial progress.
-- A later check showed multiple concurrent WSL download processes were blocking one another on
-  lock files.
-- Those duplicate background processes were stopped.
-- The current foreground model download is now the intended active download.
-- The download is still in progress as of the latest update.
-- Because the Hugging Face downloader supports resuming, existing partial files should continue
-  from their current state rather than restarting from zero.
+  partial progress and allowed resuming.
+- Duplicate download processes were cleaned up after they were found contending on lock files.
+- The final download completed successfully.
 
-Planned baseline model location:
+Final baseline model location:
 
 - Windows path: `C:\Users\ASUS\Music\Fine_tuning\models\voxtral-realtime`
 - WSL path: `/mnt/c/Users/ASUS/Music/Fine_tuning/models/voxtral-realtime`
@@ -254,18 +293,168 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_wsl_baseline.ps1
 - CUDA confirmed in WSL with Torch.
 - Duplicate WSL Hugging Face download processes were identified and cleaned up.
 - Post-download helper scripts were added for launch, health checks, and smoke testing.
-- Model download currently in progress.
-- BF16 server not yet launched.
+- GitHub remote updated and `shankara` branch pushed successfully.
+- Model download completed successfully.
+- BF16 server launch attempted.
+- BF16 server currently blocked by `vllm` expecting `libcudart.so.12` while Torch is using CUDA
+  `13.0`.
 - No transcription test run yet.
 - No FLEURS baseline WER run yet.
 - No compression experiment run yet.
 
 ## Recommended Next Step
 
-Complete the baseline model download, then immediately:
+Repair the WSL `vllm` installation so it matches the CUDA 13 runtime, then immediately:
 
-1. start the BF16 `vLLM` server,
-2. wait for the server readiness check to pass,
-3. run a simple transcription smoke test,
-4. run a small FLEURS evaluation on English,
-5. capture the first baseline WER and energy numbers.
+1. reinstall or replace `vllm` with a CUDA 13 compatible build,
+2. start the BF16 `vLLM` server,
+3. wait for the server readiness check to pass,
+4. run a simple transcription smoke test,
+5. run a small FLEURS evaluation on English,
+6. capture the first baseline WER and energy numbers.
+
+---
+
+## Date
+
+April 16, 2026
+
+## Objective For Today
+
+Get the BF16 baseline fully serving on the local RTX 5080 in WSL, make the transcription path work
+end to end, and capture the first real baseline WER and energy numbers.
+
+## What Was Done Today
+
+### 1. Repaired the CUDA runtime mismatch in WSL
+
+- The original `vllm` install was still linked against `libcudart.so.12`, while Torch in the WSL
+  environment was running with CUDA `13.0`.
+- The WSL baseline environment was repaired by installing a CUDA 13 compatible nightly `vllm`
+  build.
+- Verified working WSL stack after repair:
+  - `torch 2.11.0+cu130`
+  - `vllm 0.19.1rc1.dev302+g68be0f853.cu130`
+
+### 2. Hardened local server launch for WSL
+
+- `scripts/serve_model.py` was updated to inject the WSL venv Torch and NVIDIA shared-library
+  paths into `LD_LIBRARY_PATH` before launching `vllm`.
+- Added `scripts/start_vllm_server.sh` to provide a stable WSL-native launch path without fragile
+  inline shell quoting.
+- Port `8080` was already occupied locally, so the working baseline server was moved to:
+  - `http://localhost:8081/v1`
+
+### 3. Adjusted the BF16 config to fit the local 16 GB GPU budget
+
+- The original baseline config used:
+  - `max_model_len: 16384`
+- That setting failed during KV-cache initialization on the RTX 5080 under WSL.
+- The BF16 config was reduced to:
+  - `max_model_len: 8192`
+- After this change, the model loaded successfully and the server reached ready state.
+
+### 4. Fixed the live transcription path
+
+- The live server initially returned `500` errors because the WSL environment was missing:
+  - `av`
+- Installed the missing WSL audio runtime dependency:
+  - `av`
+- Later evaluation work also required:
+  - `librosa`
+- The project client in `src/voxtral_project/api.py` was switched from the chat-completions
+  multimodal path to the dedicated OpenAI-style speech endpoint:
+  - `/v1/audio/transcriptions`
+
+### 5. Fixed evaluation compatibility issues
+
+- `scripts/evaluate_fleurs.py` had a Python 3.10 issue using `datetime.UTC`.
+- This was updated to use:
+  - `datetime.now(timezone.utc)`
+- The installed Hugging Face `datasets` package was too new for script-backed dataset loading.
+- WSL `datasets` was downgraded from `4.8.4` to a script-compatible release:
+  - `3.6.0`
+- The repo requirement was updated to:
+  - `datasets>=2.18.0,<4`
+- FLEURS loading was updated to pass:
+  - `trust_remote_code=True`
+
+### 6. Captured the first successful smoke transcription
+
+- The public sample smoke test completed successfully against:
+  - `http://localhost:8081/v1`
+- Transcript saved to:
+  - `reports/smoke_test_transcript.txt`
+- Example output:
+  - `Yesterday it was 35 degrees in Barcelona, but today the temperature will go down to minus 20 degrees.`
+
+### 7. Identified a concurrency-related engine crash
+
+- A parallel smoke-test request and evaluation request were accidentally launched at the same time.
+- Under concurrent transcription requests, the current `vllm` Voxtral realtime path crashed with
+  tensor shape mismatch errors inside the engine core.
+- Sequential requests worked correctly.
+- Practical current rule for this local baseline:
+  - run transcription and evaluation jobs one request at a time
+  - avoid overlapping audio requests until this engine issue is better understood
+
+### 8. Captured the first English baseline WER results
+
+- A one-sample English FLEURS sanity check completed successfully:
+  - `WER = 21.05%`
+- Then a five-sample English FLEURS baseline completed successfully:
+  - `WER = 34.95%`
+- Reports written:
+  - `reports/fleurs_en_us_limit1.json`
+  - `reports/fleurs_en_us_limit5.json`
+
+### 9. Captured the first energy measurement
+
+- `scripts/measure_energy.py` was also patched for Python 3.10 compatibility.
+- A five-sample English FLEURS evaluation was wrapped with CodeCarbon.
+- Energy report written to:
+  - `reports/energy_fleurs_en_us_limit5.json`
+- Additional evaluation report written to:
+  - `reports/fleurs_en_us_limit5_energy_run.json`
+- Measured values:
+  - `energy_joules: 4775.58`
+  - `emissions_kg: 0.000946`
+
+## Important Findings From Today
+
+- The BF16 Voxtral baseline is now serving successfully in WSL on the local machine.
+- The working local API base is:
+  - `http://localhost:8081/v1`
+- The current local 16 GB GPU budget supports the baseline reliably at:
+  - `max_model_len: 8192`
+- The transcription path works end to end for single requests.
+- The current `vllm` Voxtral realtime path appears unstable under concurrent audio requests.
+- The first English baseline signal is now captured:
+  - `WER = 34.95%` over `5` FLEURS test samples
+- The first energy signal is also captured:
+  - about `4775.58 J` over the 5-sample measured run
+
+## Current Working State
+
+- BF16 baseline server can be launched successfully in WSL.
+- The model is being served from local files in:
+  - `/mnt/c/Users/ASUS/Music/Fine_tuning/models/voxtral-realtime`
+- The stable launch path is:
+  - `scripts/start_vllm_server.sh`
+- The client now uses:
+  - `/v1/audio/transcriptions`
+- Baseline reports currently available:
+  - `reports/smoke_test_transcript.txt`
+  - `reports/fleurs_en_us_limit1.json`
+  - `reports/fleurs_en_us_limit5.json`
+  - `reports/fleurs_en_us_limit5_energy_run.json`
+  - `reports/energy_fleurs_en_us_limit5.json`
+
+## Recommended Next Step
+
+Now that the baseline is working locally, the next most useful steps are:
+
+1. run a slightly larger English FLEURS baseline for a more stable WER estimate,
+2. test one additional language such as `hi_in` to validate multilingual behavior,
+3. investigate the empty prediction/concurrency failure before attempting parallel evaluation,
+4. begin the first decoder-focused compression experiment once the baseline reference numbers are sufficient.

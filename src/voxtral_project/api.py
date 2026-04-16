@@ -3,9 +3,6 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from voxtral_project.audio import encode_bytes_as_data_url
-
-
 DEFAULT_PROMPT = "Transcribe this audio."
 
 
@@ -14,22 +11,6 @@ def normalize_base_url(base_url: str) -> str:
     if cleaned.endswith("/v1"):
         return cleaned
     return f"{cleaned}/v1"
-
-
-def build_payload(model: str, audio_url: str, prompt: str, max_tokens: int) -> dict[str, Any]:
-    return {
-        "model": model,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "audio_url", "audio_url": {"url": audio_url}},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ],
-        "max_tokens": max_tokens,
-    }
 
 
 def list_models(*, base_url: str, timeout: int = 30) -> list[dict[str, Any]]:
@@ -78,17 +59,26 @@ def transcribe_audio_bytes(
     import requests
 
     api_base = normalize_base_url(base_url)
-    payload = build_payload(
-        model=model,
-        audio_url=encode_bytes_as_data_url(audio_bytes, mime_type),
-        prompt=prompt,
-        max_tokens=max_tokens,
-    )
+    files = {
+        "file": ("audio", audio_bytes, mime_type),
+    }
+    data = {
+        "model": model,
+        "prompt": prompt,
+        "response_format": "json",
+        "max_completion_tokens": str(max_tokens),
+    }
     response = requests.post(
-        f"{api_base}/chat/completions",
-        json=payload,
+        f"{api_base}/audio/transcriptions",
+        data=data,
+        files=files,
         timeout=timeout,
     )
     response.raise_for_status()
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
+    if response.headers.get("content-type", "").startswith("text/plain"):
+        return response.text
+
+    payload = response.json()
+    if "text" in payload:
+        return payload["text"]
+    return payload["choices"][0]["message"]["content"]

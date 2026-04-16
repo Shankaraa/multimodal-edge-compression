@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +43,13 @@ def evaluate_language(
     from voxtral_project.api import transcribe_audio_bytes
     from voxtral_project.audio import audio_array_to_wav_bytes
 
-    fleurs = load_dataset("google/fleurs", lang_code, split="test", streaming=True)
+    fleurs = load_dataset(
+        "google/fleurs",
+        lang_code,
+        split="test",
+        streaming=True,
+        trust_remote_code=True,
+    )
 
     predictions: list[str] = []
     references: list[str] = []
@@ -105,7 +111,7 @@ def main() -> int:
     ]
 
     payload = {
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "base_url": args.base_url,
         "model": args.model,
         "limit_per_language": args.limit,

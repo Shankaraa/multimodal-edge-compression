@@ -6,6 +6,7 @@
 
 mistral_common[audio]>=1.9.0
 transformers>=5.2.0
+av>=17.0.0
 auto-gptq
 optimum
 bitsandbytes
@@ -13,4 +14,7 @@ GPTQModel
 llmcompressor
 
 # Manual step for vLLM nightly:
-# pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+# Prefer `uv` because the official vLLM docs recommend it for nightly wheels and CUDA selection.
+# On this machine, Torch is running with CUDA 13.0, so use the cu130 nightly index:
+#   python -m pip install -U uv
+#   uv pip install -U vllm --torch-backend=cu130 --extra-index-url https://wheels.vllm.ai/nightly/cu130

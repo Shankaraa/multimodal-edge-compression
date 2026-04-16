@@ -4,7 +4,7 @@ import argparse
 import subprocess
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -65,7 +65,7 @@ def main() -> int:
         joules = total_energy.kWh * 3_600_000.0
 
     payload = {
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "command": command,
         "return_code": completed.returncode,
         "elapsed_seconds": elapsed,
