@@ -513,6 +513,17 @@ end to end, and capture the first real baseline WER and energy numbers.
 - This makes `fp8_round1` the first compression configuration that has shown a clear efficiency
   gain without an obvious quality regression on the local English spot check.
 
+### 16. Refreshed the project docs to match the verified checkpoint
+
+- `README.md` was updated to reflect the current best-known local state.
+- The README now includes:
+  - the quiet-audio-aware BF16 reference numbers
+  - the first working FP8 comparison numbers
+  - the current practical runtime constraints for this machine
+  - the current FP8 launch and evaluation commands
+- This leaves the repo docs aligned with the actual validated benchmark state before pushing the
+  latest code and notes to GitHub.
+
 ## Important Findings From Today
 
 - The BF16 Voxtral baseline is now serving successfully in WSL on the local machine.

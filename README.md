@@ -21,11 +21,43 @@ We are setting up a clean baseline workflow so we can:
 - measure energy with CodeCarbon,
 - compare baseline vs compressed experiments.
 
+## Current Verified Checkpoint
+
+The current strongest local reference point is the quiet-audio-aware English FLEURS `20`-sample
+comparison:
+
+- BF16 quietfix baseline on `http://localhost:8081/v1`
+  - `WER = 22.20%`
+  - `empty_prediction_count = 0`
+  - `elapsed_seconds = 46.26`
+  - `energy_joules = 8112.90`
+- FP8 round 1 on `http://localhost:8082/v1`
+  - `WER = 21.97%`
+  - `empty_prediction_count = 0`
+  - `elapsed_seconds = 35.21`
+  - `energy_joules = 4952.89`
+
+So the first `fp8_round1` run is currently the best practical result we have: essentially flat
+quality with materially lower time and energy on this machine.
+
 ## Important Runtime Note
 
 This machine is currently a Windows workspace, but the competition guide is Linux-oriented and
 `vLLM` is most practical in Linux or WSL2. This repo is structured so we can manage the project
 from Windows while running the heavy runtime pieces in Linux when needed.
+
+## Runtime Lessons So Far
+
+- The local 16 GB GPU budget is happiest at:
+  - `max_model_len: 8192`
+- The first stable FP8 serving config on this machine is:
+  - `configs/vllm/fp8_round1.yaml`
+  - `gpu_memory_utilization: 0.85`
+- Local transcription calls should be serialized through the shared API helper to avoid the known
+  engine instability under overlapping audio requests.
+- Some FLEURS clips are quiet enough to produce empty transcripts unless they are boosted first.
+  The evaluator now applies quiet-audio preparation automatically and records per-sample audio
+  diagnostics in the report JSON.
 
 ## Repo Layout
 
@@ -103,6 +135,21 @@ python scripts/evaluate_fleurs.py --lang en_us --limit 5 --base-url http://local
 python scripts/measure_energy.py --report reports/bf16_energy.json -- python scripts/evaluate_fleurs.py --lang en_us --limit 5 --base-url http://localhost:8081/v1
 ```
 
+9. Launch the first FP8 compression server after stopping BF16:
+
+```powershell
+python scripts/serve_model.py models/voxtral-realtime --config configs/vllm/fp8_round1.yaml --port 8082
+```
+
+10. Run the current best apples-to-apples English comparison:
+
+```powershell
+python scripts/measure_energy.py --report reports/energy_fleurs_fp8_en_us_limit20_quietfix.json -- python scripts/evaluate_fleurs.py --lang en_us --limit 20 --base-url http://localhost:8082/v1 --model voxtral-realtime --out reports/fleurs_fp8_en_us_limit20_quietfix.json
+```
+
+The quiet-audio-aware BF16 comparison uses the same evaluation command, just pointed back to
+`http://localhost:8081/v1`.
+
 ## Initial Experiment Order
 
 - `bf16_baseline`
@@ -113,6 +160,14 @@ python scripts/measure_energy.py --report reports/bf16_energy.json -- python scr
 
 That ordering follows the guide: get a stable baseline first, try the simplest hardware-friendly
 compression next, then move into more aggressive decoder quantization.
+
+## Most Useful Reports Right Now
+
+- `reports/fleurs_bf16_en_us_limit20_quietfix.json`
+- `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json`
+- `reports/fleurs_fp8_en_us_limit20_quietfix.json`
+- `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json`
+- `reports/fleurs_hi_in_limit5.json`
 
 ## What Is Intentionally Missing
 
