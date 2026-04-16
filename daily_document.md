@@ -455,32 +455,99 @@ end to end, and capture the first real baseline WER and energy numbers.
 - Both requests completed successfully with the expected transcript, and the BF16 server remained
   healthy on port `8081`.
 
+### 13. Diagnosed and fixed the empty-prediction evaluation gap
+
+- Two English FLEURS samples in the earlier `20`-sample run were returning deterministic empty
+  transcripts:
+  - `id 1776`
+  - `id 1972`
+- These blanks were reproduced directly three times each against the live BF16 server.
+- Audio diagnostics showed the failing clips were unusually quiet compared with the successful
+  samples.
+- A quiet-audio preparation step was added in:
+  - `src/voxtral_project/audio.py`
+- `scripts/evaluate_fleurs.py` was updated to:
+  - boost low-level samples before WAV export
+  - record per-sample audio diagnostics
+  - count empty predictions explicitly in the report
+- The quiet-audio-aware BF16 rerun improved the English `20`-sample result to:
+  - `WER = 22.20%`
+  - `empty_prediction_count = 0`
+- New reports written:
+  - `reports/fleurs_bf16_en_us_limit20_quietfix.json`
+  - `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json`
+- Measured values for the rerun:
+  - `elapsed_seconds: 46.26`
+  - `energy_joules: 8112.90`
+  - `emissions_kg: 0.001608`
+
+### 14. Brought up the first working FP8 compression run
+
+- The first `fp8_round1` launch failed at first because the local GPU memory budget was too tight.
+- `configs/vllm/fp8_round1.yaml` was updated to match the practical local serving envelope:
+  - `max_model_len: 8192`
+  - `gpu_memory_utilization: 0.85`
+- The BF16 server on `8081` was stopped temporarily to free the GPU for the compression run.
+- After that adjustment, the FP8 server launched successfully on:
+  - `http://localhost:8082/v1`
+
+### 15. Completed the first BF16 vs FP8 comparison
+
+- The same English FLEURS `20`-sample evaluation was run against the FP8 server using the same
+  quiet-audio-aware evaluator.
+- FP8 result:
+  - `WER = 21.97%`
+  - `empty_prediction_count = 0`
+- New reports written:
+  - `reports/fleurs_fp8_en_us_limit20_quietfix.json`
+  - `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json`
+- FP8 measured values:
+  - `elapsed_seconds: 35.21`
+  - `energy_joules: 4952.89`
+  - `emissions_kg: 0.000982`
+- Practical comparison against the quiet-audio-aware BF16 rerun:
+  - WER stayed effectively unchanged and was slightly better under FP8
+  - elapsed time dropped by about `24%`
+  - energy dropped by about `39%`
+  - emissions also dropped materially
+- This makes `fp8_round1` the first compression configuration that has shown a clear efficiency
+  gain without an obvious quality regression on the local English spot check.
+
 ## Important Findings From Today
 
 - The BF16 Voxtral baseline is now serving successfully in WSL on the local machine.
-- The working local API base is:
-  - `http://localhost:8081/v1`
+- The BF16 baseline was strong enough to expose a real evaluation blind spot:
+  - very quiet samples could collapse to empty transcripts
+- The empty-prediction issue was not random concurrency noise.
+- Quiet-audio boosting plus better diagnostics removed the empty predictions in the English
+  `20`-sample rerun.
 - The current local 16 GB GPU budget supports the baseline reliably at:
   - `max_model_len: 8192`
 - The transcription path works end to end for single requests.
 - The local project scripts now avoid the known concurrent-request crash by serializing
   transcription calls through a shared lock.
-- The stronger English baseline signal is now captured:
-  - `WER = 27.23%` over `20` FLEURS test samples
+- The stronger English BF16 reference is now:
+  - `WER = 22.20%` over `20` FLEURS test samples with `0` empty predictions
 - The first Hindi multilingual spot check is also encouraging:
   - `WER = 27.64%` over `5` FLEURS test samples
-- The first energy signal is also captured:
-  - about `13782.59 J` over the 20-sample English measured run
+- The first FP8 compression run is now working locally on the same model.
+- On the English `20`-sample comparison, FP8 preserved quality while reducing elapsed time and
+  energy materially.
 
 ## Current Working State
 
-- BF16 baseline server can be launched successfully in WSL.
+- BF16 baseline server can be launched successfully in WSL when needed.
 - The model is being served from local files in:
   - `/mnt/c/Users/ASUS/Music/Fine_tuning/models/voxtral-realtime`
 - The stable launch path is:
   - `scripts/start_vllm_server.sh`
 - The client now uses:
   - `/v1/audio/transcriptions`
+- The evaluator now includes quiet-audio preparation and per-sample audio diagnostics.
+- The currently active local server is:
+  - `http://localhost:8082/v1`
+- The currently active compression config is:
+  - `configs/vllm/fp8_round1.yaml`
 - Baseline reports currently available:
   - `reports/smoke_test_transcript.txt`
   - `reports/fleurs_en_us_limit1.json`
@@ -490,12 +557,16 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `reports/fleurs_en_us_limit20.json`
   - `reports/energy_fleurs_en_us_limit20.json`
   - `reports/fleurs_hi_in_limit5.json`
+  - `reports/fleurs_bf16_en_us_limit20_quietfix.json`
+  - `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json`
+  - `reports/fleurs_fp8_en_us_limit20_quietfix.json`
+  - `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json`
 
 ## Recommended Next Step
 
-Now that the baseline is working locally, the next most useful steps are:
+Now that the first FP8 result looks promising locally, the next most useful steps are:
 
-1. investigate the remaining empty-prediction behavior on harder samples,
-2. optionally expand the baseline with one or two more languages for broader reference coverage,
-3. begin the first decoder-focused compression experiment such as `fp8_round1`,
-4. compare compressed runs against the now-stronger English and Hindi baseline references.
+1. run the same FP8 comparison on `hi_in` and one additional language for multilingual confidence,
+2. decide whether BF16 should be restarted for more reference runs or whether the session should stay on FP8,
+3. if FP8 continues to hold quality, move to the next compression branch such as `gptq8_round1`,
+4. compare future compressed runs against the quiet-audio-aware BF16 reference instead of the older empty-containing reports.
