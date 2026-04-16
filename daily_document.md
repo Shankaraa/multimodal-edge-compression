@@ -420,6 +420,41 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `energy_joules: 4775.58`
   - `emissions_kg: 0.000946`
 
+### 10. Expanded the baseline coverage
+
+- A larger English FLEURS baseline was run sequentially with `20` samples.
+- Result:
+  - `en_us WER = 27.23%`
+- Reports written:
+  - `reports/fleurs_en_us_limit20.json`
+  - `reports/energy_fleurs_en_us_limit20.json`
+- Measured values for the 20-sample English run:
+  - `energy_joules: 13782.59`
+  - `emissions_kg: 0.002731`
+
+### 11. Captured a first multilingual spot check
+
+- A Hindi FLEURS spot check was run with `5` samples.
+- Result:
+  - `hi_in WER = 27.64%`
+- Report written:
+  - `reports/fleurs_hi_in_limit5.json`
+
+### 12. Fixed the local concurrent-request crash at the client layer
+
+- The earlier engine crash was traced to overlapping transcription requests hitting the local
+  `vllm` server at the same time.
+- A cross-process transcription lock was added in:
+  - `src/voxtral_project/api.py`
+- Because all project transcription scripts route through this shared helper, the lock now
+  serializes requests from:
+  - `scripts/smoke_test_hf_sample.py`
+  - `scripts/evaluate_fleurs.py`
+  - `scripts/transcribe_file.py`
+- Two separate concurrent smoke-test jobs were launched deliberately after the fix.
+- Both requests completed successfully with the expected transcript, and the BF16 server remained
+  healthy on port `8081`.
+
 ## Important Findings From Today
 
 - The BF16 Voxtral baseline is now serving successfully in WSL on the local machine.
@@ -428,11 +463,14 @@ end to end, and capture the first real baseline WER and energy numbers.
 - The current local 16 GB GPU budget supports the baseline reliably at:
   - `max_model_len: 8192`
 - The transcription path works end to end for single requests.
-- The current `vllm` Voxtral realtime path appears unstable under concurrent audio requests.
-- The first English baseline signal is now captured:
-  - `WER = 34.95%` over `5` FLEURS test samples
+- The local project scripts now avoid the known concurrent-request crash by serializing
+  transcription calls through a shared lock.
+- The stronger English baseline signal is now captured:
+  - `WER = 27.23%` over `20` FLEURS test samples
+- The first Hindi multilingual spot check is also encouraging:
+  - `WER = 27.64%` over `5` FLEURS test samples
 - The first energy signal is also captured:
-  - about `4775.58 J` over the 5-sample measured run
+  - about `13782.59 J` over the 20-sample English measured run
 
 ## Current Working State
 
@@ -449,12 +487,15 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `reports/fleurs_en_us_limit5.json`
   - `reports/fleurs_en_us_limit5_energy_run.json`
   - `reports/energy_fleurs_en_us_limit5.json`
+  - `reports/fleurs_en_us_limit20.json`
+  - `reports/energy_fleurs_en_us_limit20.json`
+  - `reports/fleurs_hi_in_limit5.json`
 
 ## Recommended Next Step
 
 Now that the baseline is working locally, the next most useful steps are:
 
-1. run a slightly larger English FLEURS baseline for a more stable WER estimate,
-2. test one additional language such as `hi_in` to validate multilingual behavior,
-3. investigate the empty prediction/concurrency failure before attempting parallel evaluation,
-4. begin the first decoder-focused compression experiment once the baseline reference numbers are sufficient.
+1. investigate the remaining empty-prediction behavior on harder samples,
+2. optionally expand the baseline with one or two more languages for broader reference coverage,
+3. begin the first decoder-focused compression experiment such as `fp8_round1`,
+4. compare compressed runs against the now-stronger English and Hindi baseline references.
