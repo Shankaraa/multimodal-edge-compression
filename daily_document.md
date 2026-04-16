@@ -520,9 +520,28 @@ end to end, and capture the first real baseline WER and energy numbers.
   - the quiet-audio-aware BF16 reference numbers
   - the first working FP8 comparison numbers
   - the current practical runtime constraints for this machine
-  - the current FP8 launch and evaluation commands
+- the current FP8 launch and evaluation commands
 - This leaves the repo docs aligned with the actual validated benchmark state before pushing the
   latest code and notes to GitHub.
+
+### 17. Extended the FP8 multilingual check to Hindi
+
+- The live FP8 server on `http://localhost:8082/v1` was used for a Hindi FLEURS spot check with
+  `5` samples.
+- FP8 Hindi result:
+  - `WER = 26.83%`
+  - `empty_prediction_count = 0`
+- New reports written:
+  - `reports/fleurs_fp8_hi_in_limit5_quietfix.json`
+  - `reports/energy_fleurs_fp8_hi_in_limit5_quietfix.json`
+- Measured values:
+  - `energy_joules: 1620.28`
+  - `emissions_kg: 0.000321`
+- Compared with the earlier BF16 Hindi spot check:
+  - BF16 `WER = 27.64%`
+  - FP8 was slightly better on this small sample and still produced no empty predictions
+- The next multilingual follow-up is still to run one additional non-English language through the
+  same FP8 check for broader confidence.
 
 ## Important Findings From Today
 
@@ -544,6 +563,8 @@ end to end, and capture the first real baseline WER and energy numbers.
 - The first FP8 compression run is now working locally on the same model.
 - On the English `20`-sample comparison, FP8 preserved quality while reducing elapsed time and
   energy materially.
+- The first FP8 Hindi spot check is also encouraging:
+  - `WER = 26.83%` over `5` samples with `0` empty predictions
 
 ## Current Working State
 
@@ -572,12 +593,14 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json`
   - `reports/fleurs_fp8_en_us_limit20_quietfix.json`
   - `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json`
+  - `reports/fleurs_fp8_hi_in_limit5_quietfix.json`
+  - `reports/energy_fleurs_fp8_hi_in_limit5_quietfix.json`
 
 ## Recommended Next Step
 
 Now that the first FP8 result looks promising locally, the next most useful steps are:
 
-1. run the same FP8 comparison on `hi_in` and one additional language for multilingual confidence,
+1. run the same FP8 comparison on one additional language such as `fr_fr` for broader multilingual confidence,
 2. decide whether BF16 should be restarted for more reference runs or whether the session should stay on FP8,
 3. if FP8 continues to hold quality, move to the next compression branch such as `gptq8_round1`,
 4. compare future compressed runs against the quiet-audio-aware BF16 reference instead of the older empty-containing reports.
