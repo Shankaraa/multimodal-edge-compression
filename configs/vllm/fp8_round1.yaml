@@ -1,0 +1,7 @@
+dtype: auto
+served_model_name: voxtral-realtime
+quantization: fp8
+max_model_len: 16384
+gpu_memory_utilization: 0.90
+compilation_config:
+  cudagraph_mode: PIECEWISE

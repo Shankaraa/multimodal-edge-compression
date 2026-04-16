@@ -1,0 +1,44 @@
+module_policy:
+  protect:
+    - whisper_encoder.*
+    - whisper_encoder.conv_layers.*
+    - whisper_encoder.transformer.layers.*
+    - whisper_encoder.transformer.norm.*
+    - mm_streams_embeddings.*
+    - mm_streams_embeddings.embedding_module.audio_language_projection.*
+    - language_model.model.embed_tokens.*
+    - language_model.lm_head.*
+    - ada_*
+  quantize_first:
+    - language_model.model.layers.*
+
+experiments:
+  bf16_baseline:
+    phase: baseline
+    description: Establish the quality and energy reference point.
+    config: configs/vllm/bf16.yaml
+    target_outcome: Stable serving plus WER and energy reports.
+
+  fp8_round1:
+    phase: round1
+    description: Fastest hardware-friendly compression path if runtime support is solid.
+    config: configs/vllm/fp8_round1.yaml
+    target_outcome: Lower joules with minimal quality loss.
+
+  gptq8_round1:
+    phase: round1
+    description: Conservative quantization for a safe first submission.
+    config: configs/vllm/gptq_round1.yaml
+    target_outcome: Decoder-focused compression with good WER retention.
+
+  gptq4_round2:
+    phase: round2
+    description: More aggressive decoder compression for stronger energy savings.
+    config: configs/vllm/gptq_round2.yaml
+    target_outcome: Better energy reduction if WER stays within threshold.
+
+  gptq4_fp8kv_round2:
+    phase: round2
+    description: Aggressive decoder compression plus FP8 KV cache and lower context length.
+    config: configs/vllm/aggressive_round2.yaml
+    target_outcome: Best energy profile among practical `vLLM` options.
