@@ -241,6 +241,113 @@ So the current research reality is:
 
 That is the actual bottleneck now.
 
+### 15. Validated the exact checkpoint key patterns against the current module policy
+
+The local checkpoint is not represented in just one naming scheme.
+
+It contains two parallel safetensors layouts:
+
+- `model.safetensors`
+  - modern Voxtral-style names such as:
+    - `audio_tower.*`
+    - `multi_modal_projector.*`
+    - `language_model.model.layers.*`
+    - `language_model.model.embed_tokens.*`
+    - `language_model.model.norm.*`
+- `consolidated.safetensors`
+  - older Mistral-style names such as:
+    - `mm_streams_embeddings.*`
+    - `mm_streams_embeddings.embedding_module.whisper_encoder.*`
+    - `layers.*`
+    - `norm.weight`
+
+The previous `configs/experiments.yaml` policy was only partially correct:
+
+- on `model.safetensors`
+  - `quantize_first: language_model.model.layers.*` matched the decoder correctly
+  - but the protect list missed:
+    - `audio_tower.*`
+    - `multi_modal_projector.*`
+    - `language_model.model.norm.*`
+- on `consolidated.safetensors`
+  - `mm_streams_embeddings.*` matched the encoder-side structure correctly
+  - but `quantize_first: language_model.model.layers.*` matched nothing
+  - the real decoder there is:
+    - `layers.*`
+
+This means the old policy was not just stale in wording.
+
+It was structurally incomplete across the two checkpoint layouts.
+
+### 16. Verified what `llmcompressor.model_free_ptq` actually supports
+
+The installed `llmcompressor` source confirms that `model_free_ptq` is a real raw-safetensors
+entrypoint.
+
+Important details verified from the installed code:
+
+- it accepts:
+  - `model_stub`
+  - `save_directory`
+  - `scheme`
+  - `ignore`
+- it works directly on safetensors files
+- it does not require a model definition or Transformers support
+- it quantizes weight tensors that look like linear weights
+- it automatically skips modules whose names end with `norm`
+
+But it is not a generic GPTQ-calibration path.
+
+Its own validation code makes two important constraints explicit:
+
+- it is weights-only PTQ
+- it cannot calibrate non-dynamic activations
+
+So this bridge is most credible for data-free or weight-only schemes, not for assuming that full
+classic GPTQ calibration is suddenly solved.
+
+### 17. Verified a practical model-free caveat
+
+`llmcompressor`'s checkpoint discovery on the local folder enumerates both:
+
+- `model.safetensors`
+- `consolidated.safetensors`
+
+So a naive call like:
+
+- `model_free_ptq('models/voxtral-realtime', ...)`
+
+would try to process both checkpoint layouts in the same run.
+
+That is important because the folder is not a single clean representation of the model.
+
+Any future model-free experiment should be deliberate about whether it wants:
+
+- the modern `model.safetensors` naming scheme,
+- the older `consolidated.safetensors` naming scheme,
+- or both.
+
+### 18. Updated the repo policy to match the real checkpoint structure
+
+`configs/experiments.yaml` has now been updated so the compression policy covers both naming
+schemes honestly.
+
+The updated policy now protects:
+
+- `audio_tower.*`
+- `multi_modal_projector.*`
+- `language_model.model.embed_tokens.*`
+- `language_model.model.norm.*`
+- `mm_streams_embeddings.*`
+- `mm_streams_embeddings.embedding_module.audio_language_projection.*`
+- `mm_streams_embeddings.embedding_module.whisper_encoder.*`
+- `norm.*`
+
+And it now treats both decoder layouts as candidates:
+
+- `language_model.model.layers.*`
+- `layers.*`
+
 ## Current GPTQ State
 
 - GPTQ remains a research-only branch.
@@ -255,6 +362,9 @@ That is the actual bottleneck now.
 - The second blocker is now experimentally confirmed:
   - the llmcompressor-compatible environment does not currently recognize `voxtral_realtime`
   - so installation alone is not enough to make the checkpoint usable there
+- The third blocker is now sharper too:
+  - the model folder contains two tensor naming schemes
+  - and a model-free path must decide which representation it is actually compressing
 
 ## What This Means
 
@@ -273,9 +383,9 @@ The right order is:
 
 1. Keep `~/.venvs/voxtral-gptq-research` as the modern Voxtral-compatible env.
 2. Keep `~/.venvs/voxtral-llmcompressor-research` as the old-line llmcompressor env.
-3. Validate the actual module names before writing any decoder-only recipe.
-4. Decide whether a bridge is possible between the modern checkpoint-loading env and the
-   llmcompressor env.
+3. Decide whether the first model-free attempt should operate on `model.safetensors` or
+   `consolidated.safetensors`.
+4. Build the ignore list from the actual key patterns, not from stale aliases.
 5. Only attempt artifact creation if that bridge starts to look technically concrete.
 
 ## Decision Rule

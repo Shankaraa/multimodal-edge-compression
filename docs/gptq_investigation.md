@@ -99,6 +99,124 @@ So the remaining obstacle is now an ecosystem bridge problem between:
 1. a modern Voxtral-aware environment, and
 2. an older llmcompressor-compatible environment.
 
+## Exact Checkpoint-Key Validation
+
+We directly inspected the tensor keys in both local safetensors files.
+
+### `model.safetensors`
+
+This file uses modern Voxtral / Transformers-style names:
+
+- `audio_tower.*`
+- `multi_modal_projector.*`
+- `language_model.model.layers.*`
+- `language_model.model.embed_tokens.*`
+- `language_model.model.norm.*`
+
+Important concrete counts:
+
+- `audio_tower.*`
+  - `421` keys
+- `multi_modal_projector.*`
+  - `2` keys
+- `language_model.model.layers.*`
+  - `286` keys
+- `language_model.model.embed_tokens.*`
+  - `1` key
+- `language_model.model.norm.*`
+  - `1` key
+
+### `consolidated.safetensors`
+
+This file uses older Mistral-style names:
+
+- `mm_streams_embeddings.*`
+- `mm_streams_embeddings.embedding_module.whisper_encoder.*`
+- `layers.*`
+- `norm.weight`
+
+Important concrete counts:
+
+- `mm_streams_embeddings.*`
+  - `424` keys
+- `mm_streams_embeddings.embedding_module.audio_language_projection.*`
+  - `2` keys
+- `mm_streams_embeddings.embedding_module.whisper_encoder.*`
+  - `421` keys
+- `layers.*`
+  - `286` keys
+- `norm.*`
+  - `1` key
+
+## What This Means For The Existing Module Policy
+
+The older `configs/experiments.yaml` policy was not consistent across the two layouts.
+
+### On `model.safetensors`
+
+The old policy:
+
+- correctly matched:
+  - `language_model.model.layers.*`
+- but missed:
+  - `audio_tower.*`
+  - `multi_modal_projector.*`
+  - `language_model.model.norm.*`
+
+### On `consolidated.safetensors`
+
+The old policy:
+
+- correctly matched:
+  - `mm_streams_embeddings.*`
+- but missed the decoder entirely because it looked for:
+  - `language_model.model.layers.*`
+
+when the real decoder there is:
+
+- `layers.*`
+
+So the old module policy was not just imprecise.
+
+It was only half-right depending on which checkpoint file a tool chose to read.
+
+## What We Verified About `llmcompressor.model_free_ptq`
+
+The installed `llmcompressor` source confirms a real model-free entrypoint:
+
+- `model_free_ptq(model_stub, save_directory, scheme, ignore=..., max_workers=..., device=...)`
+
+Important verified properties:
+
+- it works directly on safetensors files
+- it does not require a model definition or Transformers support
+- it supports an `ignore` list by module name
+- it automatically skips modules ending in `norm`
+- it sets quantization targets to `Linear`
+
+Important limitation:
+
+- its validation code explicitly rejects non-dynamic activation calibration
+- so this path is weights-only / data-free PTQ, not a generic full GPTQ calibration workflow
+
+## Practical Bridge Caveat
+
+`llmcompressor`'s checkpoint discovery on `models/voxtral-realtime` enumerates both:
+
+- `model.safetensors`
+- `consolidated.safetensors`
+
+So a naive `model_free_ptq('models/voxtral-realtime', ...)` call would try to process both
+checkpoint layouts in the same run.
+
+That means the bridge question is not just:
+
+- "Can llmcompressor process raw safetensors?"
+
+It is also:
+
+- "Which checkpoint representation should we deliberately give it first?"
+
 ## What The Checkpoint Layout Tells Us
 
 The checkpoint structure is good for selective compression:
@@ -142,6 +260,8 @@ Why it is interesting:
 Important caveat:
 
 - The official model-free PTQ docs emphasize data-free schemes such as FP8 Block.
+- The installed validation code confirms it is weights-only and cannot do non-dynamic activation
+  calibration.
 - They do not clearly position `model_free_ptq` as the main GPTQ path.
 - So this may become a good alternative compression route, but it is not yet strong evidence that
   true GPTQ on Voxtral will work end to end without custom integration.

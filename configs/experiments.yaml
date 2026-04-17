@@ -1,16 +1,20 @@
 module_policy:
   protect:
-    - whisper_encoder.*
-    - whisper_encoder.conv_layers.*
-    - whisper_encoder.transformer.layers.*
-    - whisper_encoder.transformer.norm.*
+    # Modern Voxtral / Transformers-style checkpoint paths in `model.safetensors`
+    - audio_tower.*
+    - multi_modal_projector.*
+    - language_model.model.embed_tokens.*
+    - language_model.model.norm.*
+    # Mistral-style checkpoint paths in `consolidated.safetensors`
     - mm_streams_embeddings.*
     - mm_streams_embeddings.embedding_module.audio_language_projection.*
-    - language_model.model.embed_tokens.*
-    - language_model.lm_head.*
-    - ada_*
+    - mm_streams_embeddings.embedding_module.whisper_encoder.*
+    - norm.*
   quantize_first:
+    # Decoder paths in `model.safetensors`
     - language_model.model.layers.*
+    # Decoder paths in `consolidated.safetensors`
+    - layers.*
 
 experiments:
   bf16_baseline:
