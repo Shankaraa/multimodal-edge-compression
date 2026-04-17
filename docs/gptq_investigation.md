@@ -45,6 +45,60 @@ For Voxtral Realtime, both standard pathways are awkward right now:
 - Our local runtime confirms that this checkpoint is still not directly loadable via
   `Transformers`, which blocks the normal calibration-first GPTQ workflow.
 
+## What Changed In The New Research Environments
+
+The older conclusion above is no longer fully true once the environment is modernized.
+
+### Modern Voxtral-compatible environment
+
+In:
+
+- `~/.venvs/voxtral-gptq-research`
+
+we verified:
+
+- `torch == 2.11.0+cu130`
+- `transformers == 5.5.4`
+- `AutoConfig.from_pretrained('models/voxtral-realtime') == ok`
+- `AutoProcessor.from_pretrained('models/voxtral-realtime') == ok`
+- `VoxtralRealtimeForConditionalGeneration import == ok`
+
+So the local checkpoint is now loadable through Transformers in a sufficiently new environment.
+
+### llmcompressor compatibility environment
+
+In:
+
+- `~/.venvs/voxtral-llmcompressor-research`
+
+we verified:
+
+- `torch == 2.10.0`
+- `transformers == 4.57.6`
+- `llmcompressor == 0.10.0.1`
+- `llmcompressor import == ok`
+
+But the checkpoint still fails there:
+
+- `AutoConfig.from_pretrained('models/voxtral-realtime') == fail`
+- `AutoProcessor.from_pretrained('models/voxtral-realtime') == fail`
+- `VoxtralRealtimeForConditionalGeneration import == fail`
+
+## What This Now Means
+
+The GPTQ branch is no longer blocked by a single statement like "Transformers cannot load
+Voxtral."
+
+The real problem is narrower and more important:
+
+- the modern Transformers line can load Voxtral,
+- but the current `llmcompressor` line pins us back to an older Transformers version that cannot.
+
+So the remaining obstacle is now an ecosystem bridge problem between:
+
+1. a modern Voxtral-aware environment, and
+2. an older llmcompressor-compatible environment.
+
 ## What The Checkpoint Layout Tells Us
 
 The checkpoint structure is good for selective compression:

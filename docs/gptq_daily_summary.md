@@ -185,6 +185,62 @@ Observed problems:
 - `auto-gptq` fell into resolver backtracking toward older package combinations, which is a strong
   sign that the classic GPTQ stack is still tied to older Transformers-era assumptions.
 
+### 12. Created a second isolated environment for the llmcompressor branch
+
+Because the package constraints conflict directly, a second dedicated compatibility environment was
+created at:
+
+- `~/.venvs/voxtral-llmcompressor-research`
+
+This environment is intentionally separate from:
+
+- `~/.venvs/voxtral-baseline`
+- `~/.venvs/voxtral-gptq-research`
+
+### 13. Installed the llmcompressor compatibility stack
+
+The llmcompressor environment installed successfully, but only by moving onto an older dependency
+line than the modern Voxtral-compatible environment.
+
+Verified package state in `~/.venvs/voxtral-llmcompressor-research`:
+
+- `torch == 2.10.0`
+- `transformers == 4.57.6`
+- `llmcompressor == 0.10.0.1`
+- `compressed_tensors == 0.14.0.1`
+- `datasets == 4.6.0`
+- `huggingface_hub == 0.36.2`
+- `safetensors == 0.7.0`
+
+Runtime checks also passed at a basic level:
+
+- `torch.cuda.is_available() == True`
+- `torch.version.cuda == 12.8`
+- `import llmcompressor == ok`
+
+### 14. Verified the split-env thesis directly
+
+The split between the two environments is now proven by direct behavior rather than inference.
+
+In the modern Voxtral-compatible env:
+
+- `AutoConfig.from_pretrained('models/voxtral-realtime') == ok`
+- `AutoProcessor.from_pretrained('models/voxtral-realtime') == ok`
+- `VoxtralRealtimeForConditionalGeneration import == ok`
+
+In the llmcompressor env:
+
+- `AutoConfig.from_pretrained('models/voxtral-realtime') == fail`
+- `AutoProcessor.from_pretrained('models/voxtral-realtime') == fail`
+- `VoxtralRealtimeForConditionalGeneration import == fail`
+
+So the current research reality is:
+
+- the modern env can see the checkpoint but does not currently host `llmcompressor`
+- the llmcompressor env can import `llmcompressor` but cannot natively recognize Voxtral
+
+That is the actual bottleneck now.
+
 ## Current GPTQ State
 
 - GPTQ remains a research-only branch.
@@ -196,6 +252,9 @@ Observed problems:
   - the modern Voxtral-compatible Transformers line
   - and the current `llmcompressor` line
   - conflict directly on required `transformers` versions.
+- The second blocker is now experimentally confirmed:
+  - the llmcompressor-compatible environment does not currently recognize `voxtral_realtime`
+  - so installation alone is not enough to make the checkpoint usable there
 
 ## What This Means
 
@@ -213,10 +272,11 @@ The right order is:
 ## Planned Next Steps
 
 1. Keep `~/.venvs/voxtral-gptq-research` as the modern Voxtral-compatible env.
-2. Decide whether to create a second, separate `llmcompressor` compatibility env.
+2. Keep `~/.venvs/voxtral-llmcompressor-research` as the old-line llmcompressor env.
 3. Validate the actual module names before writing any decoder-only recipe.
-4. Only attempt a classic GPTQ or `llmcompressor` path in an env that matches its dependency line.
-5. Attempt artifact creation only if the compatibility layer looks real.
+4. Decide whether a bridge is possible between the modern checkpoint-loading env and the
+   llmcompressor env.
+5. Only attempt artifact creation if that bridge starts to look technically concrete.
 
 ## Decision Rule
 
