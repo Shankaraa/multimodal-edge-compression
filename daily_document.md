@@ -661,6 +661,22 @@ end to end, and capture the first real baseline WER and energy numbers.
 - This makes the Japanese result much more interpretable and gives the mainline track a better
   multilingual scoring story going forward.
 
+### 24. Built the first submission-readiness docs around the FP8 mainline
+
+- The mainline path is now explicitly framed as the first submission candidate.
+- New submission-facing docs were added:
+  - `docs/submission_candidate_summary.md`
+  - `docs/submission_readiness_checklist.md`
+- `README.md` was updated to point directly at:
+  - the submission candidate summary
+  - the submission readiness checklist
+  - the submission benchmark table
+- This means the repo now has:
+  - an experimental track view
+  - a benchmark-summary view
+  - and a first-submission readiness view
+- That is the right shape for a base acceptance-oriented submission path.
+
 ## Important Findings From Today
 
 - The BF16 Voxtral baseline is now serving successfully in WSL on the local machine.
@@ -692,6 +708,8 @@ end to end, and capture the first real baseline WER and energy numbers.
   needs better scoring treatment than raw WER.
 - The evaluator now supports CER-aware reporting, which makes future CJK-style evaluations much
   more honest.
+- The FP8 path is now not only benchmarked, but also explicitly packaged as the first submission
+  candidate.
 
 ## Current Working State
 
@@ -713,6 +731,9 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `docs/gptq_investigation.md`
 - The compact FP8 benchmark summary now lives in:
   - `docs/fp8_benchmark_summary.md`
+- The submission-readiness docs now live in:
+  - `docs/submission_candidate_summary.md`
+  - `docs/submission_readiness_checklist.md`
 - Baseline reports currently available:
   - `reports/smoke_test_transcript.txt`
   - `reports/fleurs_en_us_limit1.json`
@@ -735,7 +756,7 @@ end to end, and capture the first real baseline WER and energy numbers.
 
 Now that the first FP8 result looks promising locally, the next most useful steps are:
 
-1. decide whether to install `llmcompressor` and explore the model-free compression path as the next GPTQ-adjacent research branch,
+1. polish the actual first-submission narrative using the new FP8 submission docs,
 2. keep using FP8 as the current working compression baseline until GPTQ-compatible artifacts exist,
 3. compare future compressed runs against the quiet-audio-aware BF16 reference instead of the older empty-containing reports,
 4. expand multilingual FP8 coverage further only if we still need more submission confidence.

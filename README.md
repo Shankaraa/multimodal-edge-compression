@@ -40,6 +40,23 @@ comparison:
 So the first `fp8_round1` run is currently the best practical result we have: essentially flat
 quality with materially lower time and energy on this machine.
 
+## Current Submission Path
+
+The first submission path should be the FP8 mainline, not GPTQ.
+
+Why:
+
+- FP8 is already working and benchmarked
+- FP8 already beats BF16 on efficiency on the core English comparison
+- FP8 already has multilingual spot-check evidence
+- GPTQ is still a research branch and is not yet artifact-ready
+
+Submission-facing docs:
+
+- [docs/submission_candidate_summary.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_candidate_summary.md)
+- [docs/submission_readiness_checklist.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_readiness_checklist.md)
+- [docs/submission_benchmark_table.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_benchmark_table.md)
+
 ## Important Runtime Note
 
 This machine is currently a Windows workspace, but the competition guide is Linux-oriented and
@@ -167,7 +184,17 @@ compression next, then move into more aggressive decoder quantization.
 - `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json`
 - `reports/fleurs_fp8_en_us_limit20_quietfix.json`
 - `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json`
-- `reports/fleurs_hi_in_limit5.json`
+- `reports/fleurs_fp8_hi_in_limit5_quietfix.json`
+- `reports/fleurs_fp8_fr_fr_limit5_quietfix.json`
+- `reports/fleurs_fp8_ja_jp_limit5_quietfix_v2.json`
+
+## Most Useful Docs Right Now
+
+- `docs/submission_candidate_summary.md`
+- `docs/submission_readiness_checklist.md`
+- `docs/submission_benchmark_table.md`
+- `docs/fp8_benchmark_summary.md`
+- `docs/fp8_mainline_track.md`
 
 ## What Is Intentionally Missing
 
