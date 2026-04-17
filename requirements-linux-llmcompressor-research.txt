@@ -1,0 +1,24 @@
+# Use this file only in a dedicated llmcompressor compatibility environment.
+# Do not install it into:
+#   ~/.venvs/voxtral-baseline
+# or:
+#   ~/.venvs/voxtral-gptq-research
+#
+# Why this file exists:
+# - Voxtral Realtime now loads in modern Transformers (`>=5.2.0`)
+# - `llmcompressor==0.10.0.1` currently requires `transformers<=4.57.6`
+# - so a single shared GPTQ research env is not honest or reproducible
+#
+# Suggested WSL env:
+#   ~/.venvs/voxtral-llmcompressor-research
+#
+# Example:
+#   python3 -m venv ~/.venvs/voxtral-llmcompressor-research
+#   source ~/.venvs/voxtral-llmcompressor-research/bin/activate
+#   pip install -r requirements.txt
+#   pip install torch --index-url https://download.pytorch.org/whl/cu130
+#   pip install -r requirements-linux-llmcompressor-research.txt
+
+transformers>=4.56.1,<=4.57.6
+llmcompressor==0.10.0.1
+safetensors>=0.4.3

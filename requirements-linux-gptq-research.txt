@@ -1,0 +1,35 @@
+# Install the shared project utilities first:
+#   pip install -r requirements.txt
+#
+# Then use this file only inside the modern Voxtral-compatible GPTQ research environment.
+# Do not install these packages into the active FP8/mainline environment.
+#
+# Recommended WSL env:
+#   ~/.venvs/voxtral-gptq-research
+#
+# Important:
+# This file is intentionally the modern Voxtral-compatible side of the research stack.
+# It does not include `llmcompressor`, `auto-gptq`, or `GPTQModel` because those packages do not
+# currently coexist cleanly with the modern `transformers>=5.2.0` line needed for Voxtral
+# Realtime support.
+#
+# If you want to test `llmcompressor`, use:
+#   requirements-linux-llmcompressor-research.txt
+#
+# Example:
+#   python3 -m venv ~/.venvs/voxtral-gptq-research
+#   source ~/.venvs/voxtral-gptq-research/bin/activate
+#   pip install -r requirements.txt
+#   pip install -r requirements-linux-gptq-research.txt
+
+mistral_common[audio]>=1.9.0
+transformers>=5.2.0
+av>=17.0.0
+bitsandbytes
+optimum
+
+# Optional later step for artifact-validation in the separate research env:
+# Prefer `uv` because the official vLLM docs recommend it for nightly wheels and CUDA selection.
+# On this machine, the working runtime has been using CUDA 13.0:
+#   python -m pip install -U uv
+#   uv pip install -U vllm --torch-backend=cu130 --extra-index-url https://wheels.vllm.ai/nightly/cu130
