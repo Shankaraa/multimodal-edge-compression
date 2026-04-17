@@ -539,9 +539,127 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `emissions_kg: 0.000321`
 - Compared with the earlier BF16 Hindi spot check:
   - BF16 `WER = 27.64%`
-  - FP8 was slightly better on this small sample and still produced no empty predictions
+- FP8 was slightly better on this small sample and still produced no empty predictions
 - The next multilingual follow-up is still to run one additional non-English language through the
   same FP8 check for broader confidence.
+
+### 18. Extended the FP8 multilingual check to French
+
+- The same live FP8 server on `http://localhost:8082/v1` was used for a French FLEURS spot check
+  with `5` samples.
+- FP8 French result:
+  - `WER = 23.18%`
+  - `empty_prediction_count = 0`
+- New reports written:
+  - `reports/fleurs_fp8_fr_fr_limit5_quietfix.json`
+  - `reports/energy_fleurs_fp8_fr_fr_limit5_quietfix.json`
+- Measured values:
+  - `energy_joules: 2121.87`
+  - `emissions_kg: 0.000421`
+- This gives us a third language datapoint for FP8 after English and Hindi, and it continued to
+  avoid the earlier empty-prediction failure mode.
+
+### 19. Started the GPTQ round-1 branch and found the current blocker
+
+- `configs/vllm/gptq_round1.yaml` was first brought in line with the local working runtime budget:
+  - `max_model_len: 8192`
+  - `gpu_memory_utilization: 0.85`
+- The active FP8 server was stopped temporarily so GPTQ could get the full GPU.
+- A foreground launch probe was then run for:
+  - `configs/vllm/gptq_round1.yaml`
+  - port `8083`
+- The launch failed early with a clear `vLLM` validation error:
+  - `Cannot find the config file for gptq`
+- This means the local Voxtral checkpoint is not a ready-to-serve GPTQ checkpoint in its current
+  form.
+- In practical terms, `vLLM` is not performing GPTQ quantization on the fly here; it expects a
+  compatible GPTQ quantization config/checkpoint to already exist.
+- After confirming the blocker, the working FP8 server was restored successfully on:
+  - `http://localhost:8082/v1`
+- So the project remains in a usable state, but `gptq8_round1` is currently blocked on preparing
+  or obtaining GPTQ-formatted weights/configs rather than just changing a `vLLM` flag.
+
+### 20. Investigated the practical GPTQ preparation path
+
+- The local WSL runtime was checked for GPTQ tooling support.
+- Current state:
+  - installed: `vllm`, `compressed_tensors`, `transformers`
+  - missing: `llmcompressor`, `gptqmodel`, `auto_gptq`
+- `transformers.AutoConfig.from_pretrained(...)` still fails on the local Voxtral checkpoint
+  because `voxtral_realtime` is not recognized by the installed Transformers build.
+- This reinforces the key constraint already hinted at by the model card:
+  - Voxtral Realtime is currently practical in `vLLM`
+  - it is not yet a normal Hugging Face Transformers model in this environment
+- The local checkpoint layout was inspected directly and confirms a clean selective-compression
+  boundary:
+  - protect `audio_tower.*`
+  - protect `multi_modal_projector.*`
+  - protect `language_model.model.embed_tokens.*`
+  - target `language_model.model.layers.*`
+- A dedicated investigation note was added at:
+  - `docs/gptq_investigation.md`
+- Current conclusion:
+- standard GPTQ serving is blocked because we do not yet have GPTQ-formatted artifacts
+- standard calibration-first GPTQ tooling is also awkward because Voxtral Realtime is still not
+  directly loadable through Transformers here
+- the most realistic follow-up is to investigate `llmcompressor` model-free compression as a
+  research branch while keeping FP8 as the main practical submission path
+
+### 21. Extended the FP8 mainline to Japanese and found a metric caveat
+
+- The live FP8 server on `http://localhost:8082/v1` was used for a Japanese FLEURS spot check
+  with `5` samples.
+- Raw report result:
+  - `WER = 100.00%`
+  - `empty_prediction_count = 0`
+- New reports written:
+  - `reports/fleurs_fp8_ja_jp_limit5_quietfix.json`
+  - `reports/energy_fleurs_fp8_ja_jp_limit5_quietfix.json`
+- Measured values:
+  - `energy_joules: 2632.10`
+  - `emissions_kg: 0.000522`
+- The model outputs were non-empty and clearly Japanese, so this did not look like a total model
+  failure.
+- The likely issue is metric mismatch:
+  - the FLEURS Japanese references contain spaces
+  - the generated Japanese predictions are mostly unsegmented
+  - standard word-based WER therefore becomes misleading
+- A spacing-agnostic character-level check on the same `5` Japanese samples gave:
+  - `CER ≈ 10.0%`
+- So the Japanese run exposed a scoring caveat rather than a serving or empty-output failure.
+
+### 22. Added a compact FP8 benchmark summary artifact
+
+- A dedicated summary document was added at:
+  - `docs/fp8_benchmark_summary.md`
+- It captures:
+  - the BF16 quiet-audio-aware English reference
+  - the FP8 English comparison
+  - the FP8 Hindi, French, and Japanese spot checks
+  - the current Japanese metric caveat
+- This gives the mainline track a reusable benchmark snapshot for future reporting and submission
+  framing.
+
+### 23. Added CER-aware scoring support for multilingual evaluation
+
+- The Japanese FP8 spot check showed that raw word-based WER can be misleading for CJK-style text
+  when references contain spaces but predictions are mostly unsegmented.
+- `scripts/evaluate_fleurs.py` was updated to record:
+  - `cer`
+  - `cer_percent`
+  - `cer_no_whitespace`
+  - `cer_no_whitespace_percent`
+- The Japanese FP8 run was then repeated with the updated evaluator.
+- Updated Japanese result:
+  - `WER = 100.00%`
+  - `CER = 10.42%`
+  - `CER(no-space) = 10.00%`
+  - `empty_prediction_count = 0`
+- New updated reports written:
+  - `reports/fleurs_fp8_ja_jp_limit5_quietfix_v2.json`
+  - `reports/energy_fleurs_fp8_ja_jp_limit5_quietfix_v2.json`
+- This makes the Japanese result much more interpretable and gives the mainline track a better
+  multilingual scoring story going forward.
 
 ## Important Findings From Today
 
@@ -565,6 +683,15 @@ end to end, and capture the first real baseline WER and energy numbers.
   energy materially.
 - The first FP8 Hindi spot check is also encouraging:
   - `WER = 26.83%` over `5` samples with `0` empty predictions
+- The first FP8 French spot check is also encouraging:
+  - `WER = 23.18%` over `5` samples with `0` empty predictions
+- The next compression branch, `gptq8_round1`, is not immediately runnable from the current local
+  checkpoint because the required GPTQ config/checkpoint artifacts are missing.
+- GPTQ is now better understood as a preparation problem, not a simple `vLLM` runtime flag.
+- FP8 is now holding up across English, Hindi, French, and a Japanese spot check, though Japanese
+  needs better scoring treatment than raw WER.
+- The evaluator now supports CER-aware reporting, which makes future CJK-style evaluations much
+  more honest.
 
 ## Current Working State
 
@@ -580,6 +707,12 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `http://localhost:8082/v1`
 - The currently active compression config is:
   - `configs/vllm/fp8_round1.yaml`
+- `configs/vllm/gptq_round1.yaml` is now tuned to the local memory envelope, but the branch is
+  still blocked by missing GPTQ artifacts.
+- The GPTQ investigation summary now lives in:
+  - `docs/gptq_investigation.md`
+- The compact FP8 benchmark summary now lives in:
+  - `docs/fp8_benchmark_summary.md`
 - Baseline reports currently available:
   - `reports/smoke_test_transcript.txt`
   - `reports/fleurs_en_us_limit1.json`
@@ -595,12 +728,14 @@ end to end, and capture the first real baseline WER and energy numbers.
   - `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json`
   - `reports/fleurs_fp8_hi_in_limit5_quietfix.json`
   - `reports/energy_fleurs_fp8_hi_in_limit5_quietfix.json`
+  - `reports/fleurs_fp8_fr_fr_limit5_quietfix.json`
+  - `reports/energy_fleurs_fp8_fr_fr_limit5_quietfix.json`
 
 ## Recommended Next Step
 
 Now that the first FP8 result looks promising locally, the next most useful steps are:
 
-1. run the same FP8 comparison on one additional language such as `fr_fr` for broader multilingual confidence,
-2. decide whether BF16 should be restarted for more reference runs or whether the session should stay on FP8,
-3. if FP8 continues to hold quality, move to the next compression branch such as `gptq8_round1`,
-4. compare future compressed runs against the quiet-audio-aware BF16 reference instead of the older empty-containing reports.
+1. decide whether to install `llmcompressor` and explore the model-free compression path as the next GPTQ-adjacent research branch,
+2. keep using FP8 as the current working compression baseline until GPTQ-compatible artifacts exist,
+3. compare future compressed runs against the quiet-audio-aware BF16 reference instead of the older empty-containing reports,
+4. expand multilingual FP8 coverage further only if we still need more submission confidence.

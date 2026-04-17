@@ -124,11 +124,19 @@ def evaluate_language(
         )
 
     wer_value = jiwer.wer(references, predictions)
+    cer_value = jiwer.cer(references, predictions)
+    references_no_whitespace = ["".join(text.split()) for text in references]
+    predictions_no_whitespace = ["".join(text.split()) for text in predictions]
+    cer_no_whitespace_value = jiwer.cer(references_no_whitespace, predictions_no_whitespace)
     return {
         "language": lang_code,
         "samples_evaluated": len(samples),
         "wer": wer_value,
         "wer_percent": wer_value * 100.0,
+        "cer": cer_value,
+        "cer_percent": cer_value * 100.0,
+        "cer_no_whitespace": cer_no_whitespace_value,
+        "cer_no_whitespace_percent": cer_no_whitespace_value * 100.0,
         "empty_prediction_count": empty_prediction_count,
         "samples": samples,
     }
@@ -165,8 +173,10 @@ def main() -> int:
     for result in results:
         print(
             f"{result['language']}: WER={result['wer']:.4f} "
-            f"({result['wer_percent']:.2f}%) over {result['samples_evaluated']} samples "
-            f"with {result['empty_prediction_count']} empty predictions"
+            f"({result['wer_percent']:.2f}%), CER={result['cer_percent']:.2f}%, "
+            f"CER(no-space)={result['cer_no_whitespace_percent']:.2f}% "
+            f"over {result['samples_evaluated']} samples with "
+            f"{result['empty_prediction_count']} empty predictions"
         )
 
     if args.out:
