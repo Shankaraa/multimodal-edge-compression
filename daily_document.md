@@ -760,3 +760,240 @@ Now that the first FP8 result looks promising locally, the next most useful step
 2. keep using FP8 as the current working compression baseline until GPTQ-compatible artifacts exist,
 3. compare future compressed runs against the quiet-audio-aware BF16 reference instead of the older empty-containing reports,
 4. expand multilingual FP8 coverage further only if we still need more submission confidence.
+
+---
+
+## Date
+
+April 20, 2026
+
+## Project
+
+Voxtral Real-Time 4B compression project for the Resilient AI Challenge audio-to-text track.
+
+## Objective For Today
+
+Anchor the current FP8 submission path against a serious external ASR baseline and fix the
+metric framing so public benchmark comparisons are not misleading.
+
+## What Was Done Today
+
+### 1. Added an external-baseline backend to the FLEURS evaluator
+
+- `scripts/evaluate_fleurs.py` was extended to support two interchangeable transcription
+  backends:
+  - `vllm_api`
+  - `whisper_transformers`
+- A new shared backend module was added:
+  - `src/voxtral_project/asr.py`
+- This means the same evaluation script can now benchmark:
+  - local Voxtral through the `vLLM` API
+  - local Hugging Face Whisper models through Transformers
+- That matters because it keeps:
+  - dataset selection
+  - quiet-audio preparation
+  - metric computation
+  - report shape
+  identical across the comparison.
+
+### 2. Ran the first real external baseline probe with Whisper large-v3
+
+- The WSL GPU environment was verified usable for the comparison:
+  - Torch CUDA available: `True`
+  - `transformers` already installed
+- A first one-sample probe with:
+  - `openai/whisper-large-v3`
+  succeeded and downloaded the model into the WSL environment.
+- After that, a full same-slice English run was executed on:
+  - `google/fleurs`
+  - `en_us`
+  - `limit 20`
+- New reports written:
+  - `reports/fleurs_whisper_large_v3_en_us_limit20.json`
+  - `reports/energy_fleurs_whisper_large_v3_en_us_limit20.json`
+- Measured Whisper result on the local slice:
+  - raw `WER = 20.59%`
+  - raw `CER = 5.13%`
+  - `0` empty predictions
+  - `elapsed_seconds = 34.77`
+  - `energy_joules = 3258.57`
+
+### 3. Found and corrected a benchmark-framing mistake in our earlier comparison logic
+
+- The earlier local WER comparisons were using raw string WER directly on:
+  - lowercase punctuation-light FLEURS references
+  - punctuated and capitalized model predictions
+- That is internally consistent, but it is not a fair public benchmark comparison by itself.
+- A new text-metric helper was added:
+  - `src/voxtral_project/text.py`
+- It now computes normalized ASR metrics using:
+  - Unicode NFKC normalization
+  - casefolding
+  - punctuation and symbol stripping
+  - control removal
+  - whitespace collapsing
+- `scripts/evaluate_fleurs.py` was updated to record:
+  - raw WER and CER
+  - raw whitespace-insensitive CER
+  - normalized WER and CER
+  - normalized whitespace-insensitive CER
+- A new utility script was added:
+  - `scripts/recompute_report_metrics.py`
+- That utility was then used to recompute the English BF16 and FP8 report metrics in place so the
+  old reports now carry normalized metrics too.
+
+### 4. Produced the first honest same-slice Voxtral vs Whisper comparison
+
+- After normalized metrics were added, the current English `20`-sample comparison now reads:
+  - BF16 quietfix:
+    - raw `WER = 22.20%`
+    - normalized `WER = 6.36%`
+    - `46.26 s`
+    - `8112.90 J`
+  - FP8 round 1:
+    - raw `WER = 21.97%`
+    - normalized `WER = 6.36%`
+    - `35.21 s`
+    - `4952.89 J`
+  - Whisper large-v3:
+    - raw `WER = 20.59%`
+    - normalized `WER = 4.32%`
+    - `34.77 s`
+    - `3258.57 J`
+- The key conclusion is:
+  - FP8 is still clearly better than our BF16 Voxtral reference on efficiency
+  - but Whisper large-v3 currently beats our local Voxtral setup on the same normalized English
+    slice
+
+### 5. Updated benchmark and submission docs with the corrected framing
+
+- New note added:
+  - `docs/global_benchmark_comparison.md`
+- Updated docs:
+  - `docs/submission_benchmark_table.md`
+  - `docs/submission_candidate_summary.md`
+  - `docs/fp8_benchmark_summary.md`
+- These updates now distinguish clearly between:
+  - the best compressed Voxtral path
+  - and the strongest external same-slice baseline we have tested
+
+### 6. Extended the external comparison to French and Hindi spot checks
+
+- Whisper large-v3 was also run on:
+  - `fr_fr limit5`
+  - `hi_in limit5`
+- New reports written:
+  - `reports/fleurs_whisper_large_v3_fr_fr_limit5.json`
+  - `reports/energy_fleurs_whisper_large_v3_fr_fr_limit5.json`
+  - `reports/fleurs_whisper_large_v3_hi_in_limit5.json`
+  - `reports/energy_fleurs_whisper_large_v3_hi_in_limit5.json`
+- French Whisper result:
+  - raw `WER = 21.85%`
+  - normalized `WER = 8.07%`
+  - `energy_joules = 3605.36`
+- Hindi Whisper result:
+  - raw `WER = 32.52%`
+  - normalized `WER = 28.46%`
+  - `energy_joules = 4679.43`
+- Existing FP8 French and Hindi reports were recomputed with normalized metrics too so the
+  spot-check comparisons are now fairer.
+
+## Important Findings From Today
+
+- The right comparison question was not "is our raw WER good?"
+- The right comparison question is:
+  - does FP8 beat BF16 within the Voxtral track
+  - and how far are we from a strong external baseline under a fairer normalized metric
+- Once normalized metrics are used, the local English picture is much clearer:
+  - BF16 normalized `WER = 6.36%`
+  - FP8 normalized `WER = 6.36%`
+  - Whisper large-v3 normalized `WER = 4.32%`
+- So the current FP8 path is a real compression success inside the Voxtral track, but it is not
+  yet beating the strongest external baseline we checked.
+- The multilingual external picture is mixed:
+  - Whisper is ahead on the current French spot check
+  - FP8 is ahead on the current Hindi spot check
+- This is exactly the kind of finding we wanted early, because it sharpens the submission story
+  instead of letting us over-claim.
+
+## Current Working State
+
+- The active serving path for compressed Voxtral remains:
+  - `http://localhost:8082/v1`
+- The current mainline compression config remains:
+  - `configs/vllm/fp8_round1.yaml`
+- The evaluator can now benchmark both:
+  - Voxtral through `vLLM`
+  - Whisper through Transformers
+- The English comparison now has three useful report pairs:
+  - `reports/fleurs_bf16_en_us_limit20_quietfix.json`
+  - `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json`
+  - `reports/fleurs_fp8_en_us_limit20_quietfix.json`
+  - `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json`
+  - `reports/fleurs_whisper_large_v3_en_us_limit20.json`
+  - `reports/energy_fleurs_whisper_large_v3_en_us_limit20.json`
+- The external spot-check comparison also now includes:
+  - `reports/fleurs_whisper_large_v3_fr_fr_limit5.json`
+  - `reports/energy_fleurs_whisper_large_v3_fr_fr_limit5.json`
+  - `reports/fleurs_whisper_large_v3_hi_in_limit5.json`
+  - `reports/energy_fleurs_whisper_large_v3_hi_in_limit5.json`
+- Benchmark framing docs now include:
+  - `docs/global_benchmark_comparison.md`
+  - `docs/submission_benchmark_table.md`
+  - `docs/submission_candidate_summary.md`
+
+## Recommended Next Step
+
+1. run Whisper on at least one more language from the current spot-check set so the external
+   comparison is not English-only,
+2. investigate why the local Voxtral setup still trails the published Voxtral model-card English
+   numbers,
+3. keep FP8 as the first submission path, but describe it honestly as the best compressed Voxtral
+   path rather than a global ASR leader.
+
+---
+
+## Date
+
+April 21, 2026
+
+## Project
+
+Voxtral Real-Time 4B compression project for the Resilient AI Challenge audio-to-text track.
+
+## Objective For Today
+
+Sync the completed global-benchmark comparison work into the repo cleanly and push only the
+submission-relevant code and docs.
+
+## What Was Done Today
+
+### 1. Prepared the benchmark-comparison changes for a clean Git push
+
+- Confirmed that the global-benchmark comparison work from April 20, 2026 is now documented in:
+  - `README.md`
+  - `daily_document.md`
+  - `docs/global_benchmark_comparison.md`
+  - `docs/submission_benchmark_table.md`
+  - `docs/submission_candidate_summary.md`
+  - `docs/fp8_benchmark_summary.md`
+  - `scripts/evaluate_fleurs.py`
+  - `scripts/recompute_report_metrics.py`
+  - `src/voxtral_project/asr.py`
+  - `src/voxtral_project/text.py`
+- Confirmed that unrelated local GPTQ-side research files remain separate and should not be mixed
+  into this push unless we explicitly decide to do that later.
+
+## Important Findings From Today
+
+- The benchmark-comparison work is now ready to be pushed as a coherent update.
+- The right push for today is a selective one:
+  - include the global-benchmark evaluation and submission-framing updates
+  - exclude unrelated GPTQ-side experiments that are still local-only
+
+## Recommended Next Step
+
+1. push the benchmark-comparison update to `main`,
+2. continue the FP8 submission track with one more carefully chosen external comparison only if it
+   changes the submission story,
+3. keep GPTQ work isolated until it is ready to stand on its own.

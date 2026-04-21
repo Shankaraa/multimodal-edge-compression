@@ -24,10 +24,11 @@ Use this file when we need:
 
 ### English reference comparison
 
-| Config | Language | Samples | WER | Empty preds | Elapsed (s) | Energy (J) | Interpretation |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| BF16 quietfix | `en_us` | 20 | 22.20% | 0 | 46.26 | 8112.90 | trusted reference |
-| FP8 round 1 | `en_us` | 20 | 21.97% | 0 | 35.21 | 4952.89 | better efficiency, no obvious quality loss |
+| Config | Backend | Language | Samples | Raw WER | Norm WER | Empty preds | Elapsed (s) | Energy (J) | Interpretation |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| BF16 quietfix | `vLLM` | `en_us` | 20 | 22.20% | 6.36% | 0 | 46.26 | 8112.90 | trusted internal reference |
+| FP8 round 1 | `vLLM` | `en_us` | 20 | 21.97% | 6.36% | 0 | 35.21 | 4952.89 | best current compressed Voxtral path |
+| Whisper large-v3 | `Transformers` | `en_us` | 20 | 20.59% | 4.32% | 0 | 34.77 | 3258.57 | strongest external same-slice baseline so far |
 
 ## Multilingual FP8 Snapshot
 
@@ -37,30 +38,41 @@ Use this file when we need:
 | FP8 round 1 | `fr_fr` | 5 | `WER = 23.18%` | 0 | 2121.87 | good spot check |
 | FP8 round 1 | `ja_jp` | 5 | `CER = 10.42%`, `CER(no-space) = 10.00%` | 0 | 2692.89 | raw WER is misleading here |
 
+## External Multilingual Anchor
+
+| Config | Language | Samples | Raw WER | Norm WER | Energy (J) | Interpretation |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| Whisper large-v3 | `fr_fr` | 5 | 21.85% | 8.07% | 3605.36 | ahead of current FP8 French spot check |
+| Whisper large-v3 | `hi_in` | 5 | 32.52% | 28.46% | 4679.43 | behind current FP8 Hindi spot check |
+
 ## Main Message
 
 The current evidence says:
 
 - FP8 is already a better practical path than BF16 on this machine
 - FP8 is materially better on efficiency
-- FP8 is holding quality on the current English reference
+- FP8 preserves normalized English quality against our BF16 Voxtral reference
 - FP8 is producing stable multilingual outputs across Hindi, French, and Japanese
+- Whisper large-v3 currently beats our local Voxtral setup on the same normalized English slice
+- the external multilingual picture is mixed, not uniformly against FP8
 - Japanese needs CER-aware interpretation, not raw WER alone
 
 ## What We Should Say Honestly
 
 - FP8 is the strongest current submission path.
+- FP8 is the strongest current compressed Voxtral path, not the strongest model overall.
 - GPTQ is still research, not a ready benchmark branch.
+- Use normalized WER for public-facing English comparisons.
 - The evaluation pipeline is much stronger now than it was earlier because it includes:
   - serialized transcription requests
   - quiet-audio preparation
   - explicit empty-prediction counting
   - CER-aware reporting support
+  - normalized ASR metrics for fairer external comparison
 
 ## Recommended Competition Framing
 
 If we had to describe the current state in one sentence:
 
-FP8 is the first compression path that is already giving us reproducible efficiency wins without an
-obvious quality regression, and it is holding up across multiple languages with increasingly honest
-evaluation.
+FP8 is the first compression path that is already giving us reproducible efficiency wins within the
+Voxtral track, while stronger external baselines still give us a clear target to chase.

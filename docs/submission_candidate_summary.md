@@ -44,6 +44,27 @@ Interpretation:
 - FP8 is about `24%` faster
 - FP8 uses about `39%` less energy
 - FP8 did not regress on the trusted English comparison
+- normalized English WER is `6.36%` for both BF16 and FP8 on this slice
+
+### External benchmark anchor
+
+- Whisper large-v3 on the same local `en_us limit20` slice:
+  - raw `WER = 20.59%`
+  - normalized `WER = 4.32%`
+  - `0` empty predictions
+  - `34.77 s`
+  - `3258.57 J`
+
+Interpretation:
+
+- FP8 remains the best compressed Voxtral path we have
+- Whisper large-v3 is currently stronger than our local Voxtral setup on the same normalized
+  English slice
+- that means our current first submission is credible, but not yet a claim of beating strong
+  public ASR baselines
+- the multilingual external picture is mixed so far:
+  - Whisper is ahead on the current French spot check
+  - FP8 is ahead on the current Hindi spot check
 
 ### Multilingual support signal
 
@@ -69,6 +90,8 @@ Interpretation:
 - GPTQ is still a research branch, not a submission-ready branch
 - Japanese raw word-based WER is misleading because of segmentation mismatch
 - our strongest comparison is still local and relatively small, especially outside English
+- strong external baselines like Whisper large-v3 still outperform our current local Voxtral
+  setup on the normalized English slice
 
 These are acceptable caveats for a first submission as long as we describe them honestly.
 
@@ -83,6 +106,7 @@ These are acceptable caveats for a first submission as long as we describe them 
 - do not claim GPTQ results
 - do not present Japanese raw WER as the true quality signal
 - do not imply large-scale multilingual validation beyond the spot checks we actually ran
+- do not claim we are beating strong global ASR baselines yet
 
 ## One-Sentence Submission Framing
 

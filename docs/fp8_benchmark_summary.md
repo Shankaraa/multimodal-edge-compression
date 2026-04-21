@@ -32,9 +32,22 @@ It is meant to answer three questions quickly:
 
 ### English comparison
 
-| Run | Samples | WER | Empty preds | Elapsed (s) | Energy (J) |
-| --- | --- | ---: | ---: | ---: | ---: |
-| `en_us` | 20 | 21.97% | 0 | 35.21 | 4952.89 |
+| Run | Samples | Raw WER | Norm WER | Empty preds | Elapsed (s) | Energy (J) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `en_us` | 20 | 21.97% | 6.36% | 0 | 35.21 | 4952.89 |
+
+### External same-slice anchor
+
+| System | Samples | Raw WER | Norm WER | Empty preds | Elapsed (s) | Energy (J) | Notes |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Whisper large-v3 | 20 | 20.59% | 4.32% | 0 | 34.77 | 3258.57 | stronger external baseline on this English slice |
+
+### External multilingual anchors
+
+| Language | Whisper raw WER | Whisper norm WER | Notes |
+| --- | ---: | ---: | --- |
+| `fr_fr` | 21.85% | 8.07% | ahead of the current FP8 French spot check |
+| `hi_in` | 32.52% | 28.46% | behind the current FP8 Hindi spot check |
 
 ### Multilingual spot checks
 
@@ -70,9 +83,11 @@ So Japanese currently exposes an evaluation-metric caveat, not a simple FP8 coll
 - FP8 is already better than BF16 on English efficiency:
   - about `24%` faster
   - about `39%` lower energy
-- FP8 is holding quality on the current English reference.
+- FP8 is holding normalized quality on the current English Voxtral reference.
 - FP8 is also producing stable non-empty outputs on Hindi, French, and Japanese.
 - Japanese needs better scoring treatment before it should be used as a headline quality number.
+- Whisper large-v3 currently beats our local Voxtral setup on the same normalized English slice.
+- The external multilingual comparison is mixed rather than uniformly against FP8.
 
 ## Submission-Relevant Interpretation
 
@@ -82,6 +97,8 @@ Right now, FP8 is the strongest practical compression path because:
 - it improves efficiency materially
 - it has multilingual evidence
 - its biggest new issue is a metric caveat, not a serving failure
+- it is the best current compressed Voxtral path, even though it is not yet beating the strongest
+  external baseline we checked
 
 ## Best Next Step
 

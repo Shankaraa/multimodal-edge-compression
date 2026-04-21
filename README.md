@@ -28,17 +28,31 @@ comparison:
 
 - BF16 quietfix baseline on `http://localhost:8081/v1`
   - `WER = 22.20%`
+  - `normalized WER = 6.36%`
   - `empty_prediction_count = 0`
   - `elapsed_seconds = 46.26`
   - `energy_joules = 8112.90`
 - FP8 round 1 on `http://localhost:8082/v1`
   - `WER = 21.97%`
+  - `normalized WER = 6.36%`
   - `empty_prediction_count = 0`
   - `elapsed_seconds = 35.21`
   - `energy_joules = 4952.89`
 
 So the first `fp8_round1` run is currently the best practical result we have: essentially flat
 quality with materially lower time and energy on this machine.
+
+Important comparison note:
+
+- raw WER in our reports is useful internally, but public-facing comparison should use normalized
+  WER because FLEURS references are punctuation-light and model predictions are not
+- the first external same-slice anchor is Whisper large-v3:
+  - raw `WER = 20.59%`
+  - normalized `WER = 4.32%`
+  - `elapsed_seconds = 34.77`
+  - `energy_joules = 3258.57`
+- so FP8 is currently the best compressed Voxtral path here, but it is not yet beating the
+  strongest external baseline we have checked
 
 ## Current Submission Path
 
@@ -56,6 +70,7 @@ Submission-facing docs:
 - [docs/submission_candidate_summary.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_candidate_summary.md)
 - [docs/submission_readiness_checklist.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_readiness_checklist.md)
 - [docs/submission_benchmark_table.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_benchmark_table.md)
+- [docs/global_benchmark_comparison.md](/C:/Users/ASUS/Music/Fine_tuning/docs/global_benchmark_comparison.md)
 
 ## Important Runtime Note
 

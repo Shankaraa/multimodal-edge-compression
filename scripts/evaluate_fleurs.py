@@ -14,6 +14,12 @@ def parse_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description="Evaluate WER on one or more FLEURS languages.")
     parser.add_argument(
+        "--backend",
+        choices=("vllm_api", "whisper_transformers"),
+        default="vllm_api",
+        help="Transcription backend. Use vLLM API for Voxtral or local Transformers for Whisper.",
+    )
+    parser.add_argument(
         "--lang",
         action="append",
         required=True,
@@ -43,6 +49,33 @@ def parse_args() -> argparse.Namespace:
         help="Maximum gain multiplier used for quiet-sample boosting.",
     )
     parser.add_argument("--out", default=None, help="Optional JSON report path.")
+    parser.add_argument(
+        "--hf-model-id",
+        default="openai/whisper-large-v3",
+        help="Transformers model id used when --backend whisper_transformers.",
+    )
+    parser.add_argument(
+        "--hf-device",
+        default="auto",
+        help="Torch device for the Transformers backend, such as auto, cuda:0, or cpu.",
+    )
+    parser.add_argument(
+        "--hf-torch-dtype",
+        choices=("auto", "float16", "bfloat16", "float32"),
+        default="auto",
+        help="Torch dtype used when loading the Transformers backend.",
+    )
+    parser.add_argument(
+        "--hf-attn-implementation",
+        default=None,
+        help="Optional Transformers attention implementation, such as sdpa or flash_attention_2.",
+    )
+    parser.add_argument(
+        "--hf-language-hint-mode",
+        choices=("known_if_supported", "auto"),
+        default="known_if_supported",
+        help="Pass the known FLEURS language to Whisper when supported, or let the model auto-detect.",
+    )
     return parser.parse_args()
 
 
@@ -50,19 +83,15 @@ def evaluate_language(
     *,
     lang_code: str,
     limit: int,
-    base_url: str,
-    model: str,
-    prompt: str,
-    max_tokens: int,
     quiet_audio_peak_threshold: float,
     quiet_audio_target_peak: float,
     max_audio_gain: float,
+    transcriber: object,
 ) -> dict:
-    import jiwer
     from datasets import load_dataset
 
-    from voxtral_project.api import transcribe_audio_bytes
-    from voxtral_project.audio import audio_array_to_wav_bytes, prepare_audio_array_for_transcription
+    from voxtral_project.audio import prepare_audio_array_for_transcription
+    from voxtral_project.text import summarize_transcript_metrics
 
     fleurs = load_dataset(
         "google/fleurs",
@@ -88,17 +117,10 @@ def evaluate_language(
             target_peak=quiet_audio_target_peak,
             max_gain=max_audio_gain,
         )
-        audio_bytes = audio_array_to_wav_bytes(
+        prediction = transcriber.transcribe(
             audio_array=prepared_audio_array,
             sample_rate=sample["audio"]["sampling_rate"],
-        )
-        prediction = transcribe_audio_bytes(
-            base_url=base_url,
-            model=model,
-            audio_bytes=audio_bytes,
-            mime_type="audio/wav",
-            prompt=prompt,
-            max_tokens=max_tokens,
+            lang_code=lang_code,
         )
         reference = sample["transcription"]
         is_empty_prediction = not prediction.strip()
@@ -123,49 +145,53 @@ def evaluate_language(
             }
         )
 
-    wer_value = jiwer.wer(references, predictions)
-    cer_value = jiwer.cer(references, predictions)
-    references_no_whitespace = ["".join(text.split()) for text in references]
-    predictions_no_whitespace = ["".join(text.split()) for text in predictions]
-    cer_no_whitespace_value = jiwer.cer(references_no_whitespace, predictions_no_whitespace)
+    metrics = summarize_transcript_metrics(
+        references=references,
+        predictions=predictions,
+    )
     return {
         "language": lang_code,
         "samples_evaluated": len(samples),
-        "wer": wer_value,
-        "wer_percent": wer_value * 100.0,
-        "cer": cer_value,
-        "cer_percent": cer_value * 100.0,
-        "cer_no_whitespace": cer_no_whitespace_value,
-        "cer_no_whitespace_percent": cer_no_whitespace_value * 100.0,
         "empty_prediction_count": empty_prediction_count,
+        **metrics,
         "samples": samples,
     }
 
 
 def main() -> int:
+    from voxtral_project.asr import build_transcriber
     from voxtral_project.audio import write_json
 
     args = parse_args()
+    transcriber = build_transcriber(
+        backend=args.backend,
+        base_url=args.base_url,
+        model=args.model,
+        prompt=args.prompt,
+        max_tokens=args.max_tokens,
+        hf_model_id=args.hf_model_id,
+        hf_device=args.hf_device,
+        hf_torch_dtype=args.hf_torch_dtype,
+        hf_attn_implementation=args.hf_attn_implementation,
+        hf_language_hint_mode=args.hf_language_hint_mode,
+    )
 
     results = [
         evaluate_language(
             lang_code=lang_code,
             limit=args.limit,
-            base_url=args.base_url,
-            model=args.model,
-            prompt=args.prompt,
-            max_tokens=args.max_tokens,
             quiet_audio_peak_threshold=args.quiet_audio_peak_threshold,
             quiet_audio_target_peak=args.quiet_audio_target_peak,
             max_audio_gain=args.max_audio_gain,
+            transcriber=transcriber,
         )
         for lang_code in args.lang
     ]
 
     payload = {
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "base_url": args.base_url,
-        "model": args.model,
+        "backend": args.backend,
+        "backend_details": transcriber.describe(),
         "limit_per_language": args.limit,
         "results": results,
     }
@@ -174,7 +200,9 @@ def main() -> int:
         print(
             f"{result['language']}: WER={result['wer']:.4f} "
             f"({result['wer_percent']:.2f}%), CER={result['cer_percent']:.2f}%, "
-            f"CER(no-space)={result['cer_no_whitespace_percent']:.2f}% "
+            f"CER(no-space)={result['cer_no_whitespace_percent']:.2f}%, "
+            f"norm WER={result['wer_normalized_percent']:.2f}%, "
+            f"norm CER={result['cer_normalized_percent']:.2f}% "
             f"over {result['samples_evaluated']} samples with "
             f"{result['empty_prediction_count']} empty predictions"
         )
