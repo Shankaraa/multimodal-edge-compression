@@ -984,16 +984,50 @@ submission-relevant code and docs.
 - Confirmed that unrelated local GPTQ-side research files remain separate and should not be mixed
   into this push unless we explicitly decide to do that later.
 
+### 2. Finished the first end-to-end GPTQ-side smoke test
+
+- The GPTQ research track stayed isolated from the FP8 environment and used the narrowed
+  compressed artifact:
+  - `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-noada-test`
+- The successful probe path used:
+  - tokenizer source:
+    - `models/voxtral-realtime`
+  - tokenizer mode:
+    - `mistral`
+  - config:
+    - `configs/vllm/compressed_tensors_probe.yaml`
+- A reproducible helper script was added for future model-free PTQ reruns:
+  - `scripts/run_model_free_ptq.py`
+- The narrowed artifact cleared the earlier two blockers:
+  - old-Hugging-Face tokenizer/config failure
+  - compressed-weight load failure on `ada_rms_norm_t_cond.*`
+- A full server startup completed on:
+  - `http://127.0.0.1:8085`
+- Verified API behavior:
+  - `/v1/models` returned:
+    - `voxtral-realtime-llmcompressor-probe`
+  - `/v1/audio/transcriptions` handled a real request successfully
+- The smoke-test audio was a generated 1-second tone WAV, so the returned transcript was empty,
+  which is expected for non-speech input.
+
 ## Important Findings From Today
 
 - The benchmark-comparison work is now ready to be pushed as a coherent update.
 - The right push for today is a selective one:
   - include the global-benchmark evaluation and submission-framing updates
   - exclude unrelated GPTQ-side experiments that are still local-only
+- The GPTQ-side branch has now crossed the minimum viability threshold for benchmarking:
+  - the narrowed `llmcompressor` compressed-tensors artifact can boot
+  - it can expose the transcription API
+  - and it can survive an end-to-end request
 
 ## Recommended Next Step
 
 1. push the benchmark-comparison update to `main`,
 2. continue the FP8 submission track with one more carefully chosen external comparison only if it
    changes the submission story,
-3. keep GPTQ work isolated until it is ready to stand on its own.
+3. run a small benchmark slice on the narrowed GPTQ-side artifact:
+   - startup time
+   - GPU memory footprint
+   - first-request latency
+   - short transcription throughput

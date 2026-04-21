@@ -1,0 +1,9 @@
+dtype: auto
+served_model_name: voxtral-realtime-llmcompressor-probe
+quantization: compressed-tensors
+max_model_len: 8192
+gpu_memory_utilization: 0.85
+tokenizer: models/voxtral-realtime
+tokenizer_mode: mistral
+compilation_config:
+  cudagraph_mode: PIECEWISE

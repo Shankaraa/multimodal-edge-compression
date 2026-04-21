@@ -287,3 +287,208 @@ If the priority is winning with the highest chance of a strong, reproducible res
 3. Investigate `llmcompressor` next, but start with the model-free pathway and verify which
    schemes it actually supports for this checkpoint.
 4. Only pursue true GPTQ further if the tooling path looks concrete after that check.
+
+## April 20 Bridge Update
+
+The abstract bridge question is now partially answered.
+
+We have a real compressed-tensors artifact path that can be produced from raw Voxtral
+`consolidated.safetensors`, and a narrowed version of that artifact can be loaded by `vLLM`
+past the model-weight stage.
+
+That is not true GPTQ, but it is the first end-to-end sign that this research branch can produce
+something more meaningful than install logs.
+
+## What Was Proven About Artifact Creation
+
+Using `llmcompressor.model_free_ptq` on a stub containing only the consolidated checkpoint and
+its config files, we produced:
+
+- `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-test`
+
+with:
+
+- `scheme = FP8_DYNAMIC`
+- `ignore = ['re:^mm_streams_embeddings(\\.|$)']`
+
+This proved:
+
+- `llmcompressor` can process the local Voxtral checkpoint in a model-free mode
+- the encoder can be excluded cleanly
+- the decoder receives compressed-tensors sidecars such as `weight_scale`
+
+## What The First vLLM Probe Actually Showed
+
+The first probe did not invalidate the artifact format.
+
+It failed earlier than that because the compressed output folder did not include the original
+tokenizer assets:
+
+- `tekken.json`
+- `processor_config.json`
+
+The baseline `vLLM` env is still on:
+
+- `transformers == 4.57.6`
+
+so when `vLLM` tried to build a tokenizer directly from the compressed artifact folder, it hit the
+old fatal error:
+
+- `voxtral_realtime` is not recognized by this Transformers build
+
+That means the first probe was blocked by tokenizer packaging, not yet by compressed decoder
+weights.
+
+## What Fixed The Tokenizer Blocker
+
+The probe was then re-run with:
+
+- `--tokenizer models/voxtral-realtime`
+- `--tokenizer-mode mistral`
+
+This matters because the original Voxtral folder contains:
+
+- `consolidated.safetensors`
+- `tekken.json`
+
+which is enough for `vLLM` to auto-select its native Mistral/Tekken tokenizer path instead of
+falling back to Hugging Face `AutoTokenizer`.
+
+With that override in place, the old tokenizer failure stopped being the main blocker.
+
+## First True Compressed-Weight Failure
+
+Once the tokenizer path was fixed, the first artifact failed deeper in model loading with:
+
+- `KeyError: 'layers.0.ada_rms_norm_t_cond.0.weight_scale'`
+
+This is a much more useful failure than the earlier tokenizer/config issue.
+
+It implies:
+
+- `vLLM` can see the compressed artifact,
+- the tokenizer bridge works,
+- but one decoder-side adapter branch is not supported by the current compressed-tensors loading
+  path as quantized.
+
+The failing branch is the `ada_rms_norm_t_cond` sequential in each Mistral decoder layer.
+
+## Narrowed Second Artifact
+
+A second artifact was then created with a tighter ignore list:
+
+- `re:^mm_streams_embeddings(\\.|$)`
+- `re:^layers\\.\\d+\\.ada_rms_norm_t_cond(\\.|$)`
+
+Output path:
+
+- `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-noada-test`
+
+This experiment was made reproducible via:
+
+- `scripts/run_model_free_ptq.py`
+
+## What The Second vLLM Probe Proved
+
+The second probe used:
+
+- model:
+  - `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-noada-test`
+- tokenizer:
+  - `models/voxtral-realtime`
+- tokenizer mode:
+  - `mistral`
+
+Observed behavior:
+
+- the quantized weights loaded successfully
+- `vLLM` reported model loading completed
+- the engine advanced into encoder-cache setup
+- the engine advanced into torch-compile / cache preparation
+- no compressed-weight load error was emitted
+
+The old `voxtral_realtime` warning still appears during a non-fatal config fallback path, but it
+no longer stops startup once the tokenizer override is used.
+
+## What This Means Now
+
+The current GPTQ-track truth is:
+
+- a raw model-free compression bridge exists
+- the tokenizer issue is solvable without mutating the FP8 environment
+- the first load failure was not fundamental
+- `ada_rms_norm_t_cond.*` should currently be treated as protected
+- a narrowed decoder-only compressed artifact is now viable enough for a real smoke test
+
+## Best Next Step
+
+The best next step is no longer "install more GPTQ packages."
+
+It is:
+
+1. use the narrowed `noada` artifact,
+2. keep the tokenizer override,
+3. run a full startup-and-request smoke test,
+4. then decide whether this branch deserves benchmark time against FP8.
+
+## Smoke Test Result
+
+That smoke test has now been run.
+
+Server configuration:
+
+- model:
+  - `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-noada-test`
+- tokenizer:
+  - `models/voxtral-realtime`
+- tokenizer mode:
+  - `mistral`
+- port:
+  - `8085`
+
+Observed end-to-end behavior:
+
+- `/v1/models` returned the served model id:
+  - `voxtral-realtime-llmcompressor-probe`
+- `vLLM` completed application startup
+- `vLLM` exposed:
+  - `/v1/audio/transcriptions`
+- a real transcription request completed successfully
+
+The request audio was a tiny generated 1-second pure-tone WAV, so the returned transcript was
+empty.
+
+That empty transcript is expected for non-speech audio.
+
+The important point is that the request path completed without:
+
+- tokenizer failure
+- compressed-weight loading failure
+- engine crash
+- API crash
+
+## Updated Conclusion
+
+The current branch has now crossed the minimum viability threshold for benchmarking.
+
+It is still not "true GPTQ."
+
+But it is now a working:
+
+- model-free `llmcompressor`
+- `compressed-tensors`
+- decoder-narrowed
+- `vLLM`-servable
+
+artifact path for Voxtral Realtime.
+
+## Real Next Step
+
+The right next step is a small benchmark slice, not more compatibility spelunking:
+
+1. startup time
+2. memory footprint
+3. first-request latency
+4. short transcription throughput
+
+Only after that should we decide whether this research branch earns more optimization work.

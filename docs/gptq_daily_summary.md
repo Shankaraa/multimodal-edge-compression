@@ -400,3 +400,196 @@ It gets promoted only if this track produces:
 - and that is worth benchmarking against FP8.
 
 Until then, FP8 remains the mainline path and this track stays isolated.
+
+## April 20, 2026 Follow-Up
+
+### 19. Built the first real model-free compression artifact
+
+The first successful `llmcompressor` bridge run operated on a stub that exposed only:
+
+- `consolidated.safetensors`
+- `config.json`
+- `generation_config.json`
+- `params.json`
+
+It used:
+
+- `scheme = FP8_DYNAMIC`
+- `ignore = ['re:^mm_streams_embeddings(\\.|$)']`
+
+The output artifact was written to:
+
+- `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-test`
+
+Important result:
+
+- the output checkpoint was materially smaller than the source checkpoint
+- decoder-side tensors gained `weight_scale` sidecars
+- encoder-side `mm_streams_embeddings.*` tensors stayed untouched
+
+This proved the raw-safetensors bridge was real for weight-only compression.
+
+### 20. Verified the first vLLM probe was blocked by tokenizer packaging, not by the artifact alone
+
+The first `vLLM` probe on that artifact did not fail in the quantized weight loader first.
+
+It failed earlier because the baseline `vLLM` environment still carries:
+
+- `transformers == 4.57.6`
+
+and the compressed artifact folder did not include the original tokenizer assets such as:
+
+- `tekken.json`
+- `processor_config.json`
+
+Without those files, `vLLM` fell back to Hugging Face `AutoTokenizer` on the compressed model
+folder and hit the known old-env error:
+
+- `voxtral_realtime` is not recognized by that Transformers build
+
+The important correction is:
+
+- this was not yet evidence that the compressed artifact itself was incompatible
+- it was a model-folder packaging problem in the probe setup
+
+### 21. Proved the tokenizer bridge with a separate tokenizer path
+
+The probe config was updated to force:
+
+- `tokenizer: models/voxtral-realtime`
+- `tokenizer_mode: mistral`
+
+That made `vLLM` use its native Mistral/Tekken tokenizer path from the original Voxtral folder
+instead of trying to build a tokenizer from the compressed artifact folder.
+
+Result:
+
+- the old tokenizer/config failure stopped being the fatal blocker
+- `vLLM` got far enough to start loading the compressed weights
+
+So the tokenizer problem is now solved at probe level.
+
+### 22. Identified the first actual compressed-weight incompatibility
+
+With the tokenizer override in place, the first artifact then failed during weight loading with:
+
+- `KeyError: 'layers.0.ada_rms_norm_t_cond.0.weight_scale'`
+
+This was a much better failure.
+
+It showed:
+
+- `vLLM` could see the quantized artifact,
+- the tokenizer bridge worked,
+- but one decoder-side adapter branch had been quantized too aggressively for the current
+  `vLLM` compressed-tensors loader path.
+
+### 23. Built a narrowed second artifact that excludes the failing adapter branch
+
+To test whether the incompatibility was narrow or fundamental, a second model-free artifact was
+created with a tighter ignore list:
+
+- `re:^mm_streams_embeddings(\\.|$)`
+- `re:^layers\\.\\d+\\.ada_rms_norm_t_cond(\\.|$)`
+
+That artifact was written to:
+
+- `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-noada-test`
+
+To make these reruns reproducible, the repo now includes:
+
+- `scripts/run_model_free_ptq.py`
+
+### 24. Verified the narrowed artifact loads in vLLM
+
+The second `vLLM` probe used:
+
+- model:
+  - `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-noada-test`
+- tokenizer:
+  - `models/voxtral-realtime`
+- tokenizer mode:
+  - `mistral`
+
+This probe got materially further than the first one:
+
+- quantized weights loaded successfully
+- model loading completed
+- `vLLM` moved into encoder-cache setup and torch-compile / cache preparation
+- no compressed-weight loading error was emitted
+
+The remaining old-Transformers `voxtral_realtime` warning still appears during max-position
+fallback logic, but it is no longer fatal once the tokenizer path is overridden.
+
+### 25. Current research conclusion
+
+The best current statement is now:
+
+- the raw `llmcompressor` bridge is real
+- the first tokenizer blocker was a packaging problem, not a proof of artifact incompatibility
+- the first weight-loader blocker was a narrow decoder adapter branch, not a proof that all
+  compressed-tensors artifacts fail
+- a tightened decoder-only surface can be loaded by `vLLM` far enough to clear model-weight load
+
+This is the strongest GPTQ-track progress so far, even though it is still not true GPTQ.
+
+### 26. Best next move from here
+
+The next clean continuation point is:
+
+1. keep using the tokenizer override path for compressed probes
+2. treat `ada_rms_norm_t_cond.*` as protected for now
+3. run a full startup-and-request smoke test on the narrowed artifact
+4. only then decide whether this branch is benchmark-worthy against FP8
+
+### 27. Completed the first end-to-end smoke test
+
+The narrowed artifact was launched on:
+
+- `http://127.0.0.1:8085`
+
+using:
+
+- model:
+  - `models/voxtral-realtime-llmcompressor-consolidated-fp8dynamic-noada-test`
+- tokenizer:
+  - `models/voxtral-realtime`
+- tokenizer mode:
+  - `mistral`
+
+Observed results:
+
+- `/v1/models` returned:
+  - `voxtral-realtime-llmcompressor-probe`
+- `vLLM` reported:
+  - application startup complete
+  - supported tasks:
+    - `generate`
+    - `transcription`
+    - `realtime`
+- a real `POST /v1/audio/transcriptions` request completed successfully
+
+The smoke-test audio was a tiny generated 1-second pure-tone WAV, so the returned transcript was
+empty.
+
+That is still a successful smoke pass.
+
+It proves:
+
+- the narrowed compressed artifact can boot,
+- the API server can come up,
+- the model can survive request handling,
+- and the transcription endpoint returns a normal response instead of crashing.
+
+### 28. What this changes
+
+The GPTQ research branch is now past the "can it even serve one request?" stage.
+
+The next honest move is no longer another compatibility probe.
+
+It is a small benchmark slice against the working baselines:
+
+1. startup time
+2. GPU memory footprint
+3. first-request latency
+4. short transcription throughput
