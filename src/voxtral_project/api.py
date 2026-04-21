@@ -130,6 +130,8 @@ def transcribe_audio_bytes(
     audio_bytes: bytes,
     mime_type: str = "audio/wav",
     prompt: str = DEFAULT_PROMPT,
+    language: str | None = None,
+    temperature: float | None = None,
     max_tokens: int = 1000,
     timeout: int = 300,
     request_lock_timeout: float = 900.0,
@@ -146,6 +148,10 @@ def transcribe_audio_bytes(
         "response_format": "json",
         "max_completion_tokens": str(max_tokens),
     }
+    if language:
+        data["language"] = language
+    if temperature is not None:
+        data["temperature"] = str(temperature)
     with transcription_request_lock(
         base_url=api_base,
         model=model,

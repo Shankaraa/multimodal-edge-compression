@@ -26,6 +26,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--repo-type", default="dataset", help="Hugging Face repo type.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Instruction prompt.")
+    parser.add_argument("--language", default=None, help="Optional language hint such as en or fr.")
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="Optional sampling temperature. The official recommendation is 0.0.",
+    )
     parser.add_argument("--max-tokens", type=int, default=500, help="Max output tokens.")
     parser.add_argument("--out", default=None, help="Optional path to save the transcript.")
     return parser.parse_args()
@@ -52,6 +59,8 @@ def main() -> int:
         audio_bytes=sample_path.read_bytes(),
         mime_type=guess_audio_mime_type(sample_path),
         prompt=args.prompt,
+        language=args.language,
+        temperature=args.temperature,
         max_tokens=args.max_tokens,
     )
 

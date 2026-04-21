@@ -30,6 +30,8 @@ research.
 - Practical local runtime envelope:
   - `max_model_len: 8192`
   - `gpu_memory_utilization: 0.85`
+  - `kv_cache_dtype: fp8_e4m3`
+  - `enable_prefix_caching: true`
 
 ## Evaluation State
 
@@ -147,10 +149,23 @@ As new evaluations are added, keep the following clean:
 
 ## Immediate Tasks For This Track
 
-1. Add one more useful multilingual check if broader confidence is still needed.
-2. Build a simple benchmark matrix from the current BF16 and FP8 reports.
-3. Keep Japanese-like languages interpreted with CER-aware metrics instead of raw WER alone.
-4. Keep the daily log and README aligned with the latest validated checkpoint.
+1. Re-run the English submission slice with the updated FP8 KV cache config.
+2. Warm prefix cache before measured runs with `scripts/warm_fleurs_prefix_cache.py`.
+3. Add one more useful multilingual check if broader confidence is still needed.
+4. Build a simple benchmark matrix from the current BF16 and FP8 reports.
+5. Keep Japanese-like languages interpreted with CER-aware metrics instead of raw WER alone.
+6. Keep the daily log and README aligned with the latest validated checkpoint.
+
+## Prefix-Caching Constraint
+
+The current WSL `vLLM` build does support prefix caching for the speech-to-text path, but the
+`/v1/audio/transcriptions` request model in this runtime does not expose `cache_salt`.
+
+Implication:
+
+- warmup is still worth doing
+- the warmup should happen against the same live server process that will handle the measured run
+- multi-tenant salted cache partitioning is not available on this path today
 
 ## Success Criteria
 

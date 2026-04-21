@@ -16,6 +16,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-url", default="http://localhost:8080/v1", help="Server base URL.")
     parser.add_argument("--model", default="voxtral-realtime", help="Model name exposed by the server.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Instruction prompt.")
+    parser.add_argument("--language", default=None, help="Optional language hint such as en or fr.")
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="Optional sampling temperature. The official recommendation is 0.0.",
+    )
     parser.add_argument("--max-tokens", type=int, default=1000, help="Max output tokens.")
     return parser.parse_args()
 
@@ -32,6 +39,8 @@ def main() -> int:
         audio_bytes=audio_path.read_bytes(),
         mime_type=guess_audio_mime_type(audio_path),
         prompt=args.prompt,
+        language=args.language,
+        temperature=args.temperature,
         max_tokens=args.max_tokens,
     )
     print(transcript)

@@ -1,6 +1,8 @@
 dtype: auto
 served_model_name: voxtral-realtime
 quantization: fp8
+kv_cache_dtype: fp8_e4m3
+enable_prefix_caching: true
 max_model_len: 8192
 gpu_memory_utilization: 0.85
 compilation_config:

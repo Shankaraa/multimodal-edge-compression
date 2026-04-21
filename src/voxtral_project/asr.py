@@ -34,6 +34,8 @@ class VLLMApiTranscriber:
     base_url: str
     model: str
     prompt: str = DEFAULT_PROMPT
+    language_hint_mode: str = "none"
+    temperature: float | None = None
     max_tokens: int = 1000
 
     backend_name: str = "vllm_api"
@@ -45,7 +47,7 @@ class VLLMApiTranscriber:
         sample_rate: int,
         lang_code: str,
     ) -> str:
-        del lang_code
+        language = self._language_for_request(lang_code=lang_code)
         audio_bytes = audio_array_to_wav_bytes(
             audio_array=audio_array,
             sample_rate=sample_rate,
@@ -56,8 +58,15 @@ class VLLMApiTranscriber:
             audio_bytes=audio_bytes,
             mime_type="audio/wav",
             prompt=self.prompt,
+            language=language,
+            temperature=self.temperature,
             max_tokens=self.max_tokens,
         )
+
+    def _language_for_request(self, *, lang_code: str) -> str | None:
+        if self.language_hint_mode != "fleurs_primary":
+            return None
+        return lang_code.split("_", 1)[0].lower()
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -65,6 +74,8 @@ class VLLMApiTranscriber:
             "base_url": self.base_url,
             "model": self.model,
             "prompt": self.prompt,
+            "language_hint_mode": self.language_hint_mode,
+            "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
 
@@ -177,6 +188,8 @@ def build_transcriber(
     base_url: str,
     model: str,
     prompt: str,
+    language_hint_mode: str,
+    temperature: float | None,
     max_tokens: int,
     hf_model_id: str,
     hf_device: str,
@@ -189,6 +202,8 @@ def build_transcriber(
             base_url=base_url,
             model=model,
             prompt=prompt,
+            language_hint_mode=language_hint_mode,
+            temperature=temperature,
             max_tokens=max_tokens,
         )
     if backend == "whisper_transformers":

@@ -593,3 +593,158 @@ It is a small benchmark slice against the working baselines:
 2. GPU memory footprint
 3. first-request latency
 4. short transcription throughput
+
+## April 21, 2026 Mini Benchmark
+
+### 29. Added a reproducible mini-benchmark runner
+
+To avoid hand-running three different serve/eval flows, the repo now includes:
+
+- `scripts/benchmark_vllm_variant.py`
+
+This runner:
+
+- launches a variant on a dedicated port
+- waits for `/v1/models`
+- records startup time
+- snapshots GPU memory usage
+- times the first real FLEURS request
+- runs an `en_us limit 5` evaluation through the normal `vLLM` API path
+- records elapsed time and energy
+- shuts the server back down
+
+### 30. Measured BF16, FP8, and the narrowed compressed-tensors artifact on the same slice
+
+New summary reports:
+
+- `reports/benchmark_bf16_miniqf_en_us_limit5.json`
+- `reports/benchmark_fp8_round1_miniqf_en_us_limit5.json`
+- `reports/benchmark_ct_noada_miniqf_en_us_limit5.json`
+
+New evaluation reports:
+
+- `reports/fleurs_bf16_miniqf_en_us_limit5.json`
+- `reports/fleurs_fp8_round1_miniqf_en_us_limit5.json`
+- `reports/fleurs_ct_noada_miniqf_en_us_limit5.json`
+
+New energy reports:
+
+- `reports/energy_fleurs_bf16_miniqf_en_us_limit5.json`
+- `reports/energy_fleurs_fp8_round1_miniqf_en_us_limit5.json`
+- `reports/energy_fleurs_ct_noada_miniqf_en_us_limit5.json`
+
+### 31. Benchmark result
+
+On the same `en_us limit 5` slice:
+
+- BF16:
+  - startup:
+    - `148.05 s`
+  - GPU memory:
+    - `15138 MiB`
+  - first request latency:
+    - `2.53 s`
+  - normalized `WER`:
+    - `4.81%`
+  - elapsed:
+    - `18.54 s`
+  - energy:
+    - `2793.12 J`
+  - throughput:
+    - `2.20 audio-seconds / wall-second`
+
+- FP8 round 1:
+  - startup:
+    - `132.09 s`
+  - GPU memory:
+    - `14805 MiB`
+  - first request latency:
+    - `1.71 s`
+  - normalized `WER`:
+    - `4.81%`
+  - elapsed:
+    - `14.69 s`
+  - energy:
+    - `1891.11 J`
+  - throughput:
+    - `2.78 audio-seconds / wall-second`
+
+- narrowed compressed-tensors artifact:
+  - startup:
+    - `93.83 s`
+  - GPU memory:
+    - `14588 MiB`
+  - first request latency:
+    - `10.14 s`
+  - normalized `WER`:
+    - `100.00%`
+  - empty predictions:
+    - `5 / 5`
+  - elapsed:
+    - `59.55 s`
+  - energy:
+    - `8825.33 J`
+  - throughput:
+    - `0.69 audio-seconds / wall-second`
+
+### 32. What failed
+
+The narrowed compressed-tensors path is not benchmark-worthy right now.
+
+It does have two superficial wins:
+
+- faster startup than BF16 and FP8
+- slightly lower steady GPU memory than BF16 and FP8
+
+But those wins are not meaningful because the transcription path regressed catastrophically:
+
+- first real speech request returned an empty string
+- the 5-sample run produced `5 / 5` empty predictions
+- normalized `WER` was `100%`
+- elapsed time and energy were both dramatically worse than BF16 and FP8
+
+The server log also emitted repeated warnings of the form:
+
+- `Realtime model received empty multimodal embeddings for 1 input tokens`
+
+So the current bridge is technically servable, but functionally broken for real ASR work.
+
+### 33. Updated decision
+
+This branch is now a research dead-end for submission purposes unless a specific multimodal
+embedding bug is fixed.
+
+The honest decision is:
+
+- keep the branch documented
+- do not promote it to benchmark candidate status
+- keep FP8 as the only serious compressed submission path
+
+### 34. Added a compact GPTQ track summary for future handoff
+
+The GPTQ-side notes had become technically accurate but scattered across multiple files.
+
+To make the branch easier to hand off without rereading the full investigation log, the repo now
+includes:
+
+- `docs/gptq_track_summary.md`
+
+That note compresses the current branch truth into one place:
+
+- the current result is not true GPTQ
+- the `llmcompressor` plus `compressed-tensors` bridge is real
+- the narrowed artifact is technically servable
+- the transcription path is still broken for real ASR
+- FP8 remains the only active submission path
+
+The repo index was also updated so this note is easier to discover from:
+
+- `README.md`
+
+This does not change the technical decision.
+
+It makes the decision easier to reuse:
+
+- document the branch clearly
+- keep the GPTQ work isolated
+- only reopen it if someone wants to debug the empty multimodal-embedding failure specifically

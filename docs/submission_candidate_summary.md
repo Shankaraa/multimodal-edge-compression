@@ -8,6 +8,10 @@ The current first-submission candidate is the FP8 mainline path:
   - `configs/vllm/fp8_round1.yaml`
 - active local server:
   - `http://localhost:8082/v1`
+- runtime stack:
+  - `quantization: fp8`
+  - `kv_cache_dtype: fp8_e4m3`
+  - `enable_prefix_caching: true`
 
 ## Why This Is The Candidate
 
@@ -23,6 +27,14 @@ Our current claim is:
 
 FP8 is the first compression path in this project that already delivers reproducible efficiency
 wins without an obvious quality loss on the current local benchmark suite.
+
+The most credible Round 1 upgrade path now is:
+
+- keep FP8 as the quantization choice
+- add FP8 KV cache
+- warm prefix cache on the live server before the measured run
+
+That is a stronger framing than treating plain FP8 alone as the full optimization story.
 
 ## Evidence
 
@@ -100,6 +112,8 @@ These are acceptable caveats for a first submission as long as we describe them 
 - we fixed real evaluation issues instead of hiding them
 - the current benchmark path is stronger and more honest than the earlier repo state
 - FP8 is already a practical compression improvement, not just a theoretical one
+- the next Round 1 uplift comes from stacking low-risk runtime optimizations on top of FP8, not
+  from reviving GPTQ
 
 ## What We Should Avoid Over-Claiming
 

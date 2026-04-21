@@ -46,3 +46,9 @@ experiments:
     description: Aggressive decoder compression plus FP8 KV cache and lower context length.
     config: configs/vllm/aggressive_round2.yaml
     target_outcome: Best energy profile among practical `vLLM` options.
+
+  decoder_skip_feasibility:
+    phase: research
+    description: Measure acoustic inactivity and fixed-prefix reuse before attempting decoder skipping.
+    script: scripts/profile_fleurs_silence.py
+    target_outcome: Quantify whether the PDF's scheduling ideas have enough room to justify a custom inference path.

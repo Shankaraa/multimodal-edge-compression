@@ -29,6 +29,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-url", default="http://localhost:8080/v1", help="Server base URL.")
     parser.add_argument("--model", default="voxtral-realtime", help="Model name exposed by the server.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Instruction prompt.")
+    parser.add_argument(
+        "--language-hint-mode",
+        choices=("none", "fleurs_primary"),
+        default="none",
+        help="When using the vLLM API backend, optionally send the FLEURS primary language code.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=None,
+        help="Optional sampling temperature for the vLLM API backend. The model card recommends 0.0.",
+    )
     parser.add_argument("--max-tokens", type=int, default=1000, help="Max output tokens.")
     parser.add_argument(
         "--quiet-audio-peak-threshold",
@@ -88,18 +100,11 @@ def evaluate_language(
     max_audio_gain: float,
     transcriber: object,
 ) -> dict:
-    from datasets import load_dataset
-
     from voxtral_project.audio import prepare_audio_array_for_transcription
+    from voxtral_project.dataset_utils import load_fleurs_streaming
     from voxtral_project.text import summarize_transcript_metrics
 
-    fleurs = load_dataset(
-        "google/fleurs",
-        lang_code,
-        split="test",
-        streaming=True,
-        trust_remote_code=True,
-    )
+    fleurs = load_fleurs_streaming(lang_code=lang_code, split="test")
 
     predictions: list[str] = []
     references: list[str] = []
@@ -168,6 +173,8 @@ def main() -> int:
         base_url=args.base_url,
         model=args.model,
         prompt=args.prompt,
+        language_hint_mode=args.language_hint_mode,
+        temperature=args.temperature,
         max_tokens=args.max_tokens,
         hf_model_id=args.hf_model_id,
         hf_device=args.hf_device,

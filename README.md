@@ -42,6 +42,13 @@ comparison:
 So the first `fp8_round1` run is currently the best practical result we have: essentially flat
 quality with materially lower time and energy on this machine.
 
+The next low-risk submission stack is now explicit in the repo:
+
+- `configs/vllm/fp8_round1.yaml` now includes `kv_cache_dtype: fp8_e4m3`
+- the serving configs now set `enable_prefix_caching: true` explicitly
+- `scripts/warm_fleurs_prefix_cache.py` can warm the shared speech-to-text prefix cache before a
+  measured evaluation run
+
 Important comparison note:
 
 - raw WER in our reports is useful internally, but public-facing comparison should use normalized
@@ -64,6 +71,16 @@ Why:
 - FP8 already beats BF16 on efficiency on the core English comparison
 - FP8 already has multilingual spot-check evidence
 - GPTQ is still a research branch and is not yet artifact-ready
+
+Alongside those two established tracks, the repo now has a low-risk decoder-skipping feasibility
+track:
+
+- `docs/decoder_skipping_track.md`
+- `scripts/profile_fleurs_silence.py`
+
+That track does not touch the working inference path yet. Its job is to measure whether the
+paper's "skip decoder work on silence-heavy audio" premise is strong enough on our FLEURS slices
+to justify deeper engineering.
 
 Submission-facing docs:
 
@@ -105,6 +122,7 @@ from Windows while running the heavy runtime pieces in Linux when needed.
 - `scripts/transcribe_file.py` - send one audio file to the server and print the transcript.
 - `scripts/evaluate_fleurs.py` - run WER evaluation on one or more FLEURS languages.
 - `scripts/measure_energy.py` - wrap any command with CodeCarbon energy tracking.
+- `scripts/profile_fleurs_silence.py` - measure silence-heavy structure as a proxy for decoder-skip opportunity.
 - `src/voxtral_project/` - shared helpers for API calls, audio conversion, and report writing.
 
 ## Quick Start
@@ -176,11 +194,19 @@ python scripts/serve_model.py models/voxtral-realtime --config configs/vllm/fp8_
 10. Run the current best apples-to-apples English comparison:
 
 ```powershell
+python scripts/warm_fleurs_prefix_cache.py --lang en_us --base-url http://localhost:8082/v1 --model voxtral-realtime --out reports/prefix_warmup_fp8_en_us.json
 python scripts/measure_energy.py --report reports/energy_fleurs_fp8_en_us_limit20_quietfix.json -- python scripts/evaluate_fleurs.py --lang en_us --limit 20 --base-url http://localhost:8082/v1 --model voxtral-realtime --out reports/fleurs_fp8_en_us_limit20_quietfix.json
 ```
 
 The quiet-audio-aware BF16 comparison uses the same evaluation command, just pointed back to
 `http://localhost:8081/v1`.
+
+Important runtime note:
+
+- the current WSL `vLLM` speech-to-text path supports prefix caching, but it does not expose
+  per-request `cache_salt` on `/v1/audio/transcriptions`
+- in practice that means warmup is process-local today: prime the server once, then run the
+  measured evaluation against the same live process
 
 ## Initial Experiment Order
 
@@ -210,6 +236,8 @@ compression next, then move into more aggressive decoder quantization.
 - `docs/submission_benchmark_table.md`
 - `docs/fp8_benchmark_summary.md`
 - `docs/fp8_mainline_track.md`
+- `docs/gptq_track_summary.md`
+- `docs/decoder_skipping_track.md`
 
 ## What Is Intentionally Missing
 

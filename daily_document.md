@@ -1006,9 +1006,46 @@ submission-relevant code and docs.
 - Verified API behavior:
   - `/v1/models` returned:
     - `voxtral-realtime-llmcompressor-probe`
-  - `/v1/audio/transcriptions` handled a real request successfully
+- `/v1/audio/transcriptions` handled a real request successfully
 - The smoke-test audio was a generated 1-second tone WAV, so the returned transcript was empty,
   which is expected for non-speech input.
+
+### 3. Ran the first apples-to-apples GPTQ-side mini benchmark
+
+- A new benchmark harness was added:
+  - `scripts/benchmark_vllm_variant.py`
+- It now launches a variant, waits for readiness, times the first request, runs the normal
+  `en_us limit 5` evaluation slice, records energy, and shuts the server down.
+- Three new benchmark summaries were produced:
+  - `reports/benchmark_bf16_miniqf_en_us_limit5.json`
+  - `reports/benchmark_fp8_round1_miniqf_en_us_limit5.json`
+  - `reports/benchmark_ct_noada_miniqf_en_us_limit5.json`
+- Key result:
+  - BF16 and FP8 remained healthy on the benchmark slice
+  - the narrowed GPTQ-side artifact booted and served, but produced empty transcriptions on all
+    `5 / 5` real speech samples
+- Measured comparison:
+  - BF16:
+    - startup `148.05 s`
+    - first request `2.53 s`
+    - normalized `WER 4.81%`
+    - elapsed `18.54 s`
+    - energy `2793.12 J`
+  - FP8 round 1:
+    - startup `132.09 s`
+    - first request `1.71 s`
+    - normalized `WER 4.81%`
+    - elapsed `14.69 s`
+    - energy `1891.11 J`
+  - narrowed compressed-tensors artifact:
+    - startup `93.83 s`
+    - first request `10.14 s`
+    - normalized `WER 100.00%`
+    - `5 / 5` empty predictions
+    - elapsed `59.55 s`
+    - energy `8825.33 J`
+- The artifact does start faster and use slightly less memory than BF16 and FP8, but those wins
+  are irrelevant because the actual ASR path is functionally broken.
 
 ## Important Findings From Today
 
@@ -1020,14 +1057,338 @@ submission-relevant code and docs.
   - the narrowed `llmcompressor` compressed-tensors artifact can boot
   - it can expose the transcription API
   - and it can survive an end-to-end request
+- The mini benchmark made the next decision clear:
+  - the GPTQ-side compressed-tensors branch is not benchmark-worthy for submission right now
+  - the repeated `empty multimodal embeddings` warnings line up with its all-empty transcription
+    behavior on real speech
+  - FP8 remains the only serious compressed candidate
 
 ## Recommended Next Step
 
 1. push the benchmark-comparison update to `main`,
 2. continue the FP8 submission track with one more carefully chosen external comparison only if it
    changes the submission story,
-3. run a small benchmark slice on the narrowed GPTQ-side artifact:
-   - startup time
-   - GPU memory footprint
-   - first-request latency
-   - short transcription throughput
+3. do not spend more benchmark time on the GPTQ-side branch unless someone wants to debug the
+   empty multimodal-embedding failure specifically.
+
+### 4. Diagnosed the published-gap hypothesis on the FP8 mainline
+
+- The current local question was reframed before tuning:
+  - the apparent English gap to the published Voxtral model-card number might be a bad
+    comparison rather than a bad decode setup
+- The evaluator and API path were updated to support explicit decode controls for the `vLLM`
+  path:
+  - `temperature`
+  - language hint mode
+- Updated files:
+  - `src/voxtral_project/api.py`
+  - `src/voxtral_project/asr.py`
+  - `scripts/evaluate_fleurs.py`
+  - `scripts/transcribe_file.py`
+  - `scripts/smoke_test_hf_sample.py`
+  - `scripts/benchmark_vllm_variant.py`
+
+### 5. Ruled out the most obvious decoding-side explanation
+
+- A controlled FP8 English benchmark was run on the same `en_us limit20` slice with:
+  - `temperature = 0.0`
+- Result:
+  - raw `WER = 22.43%`
+  - normalized `WER = 7.05%`
+- This was slightly worse than the current default-path result:
+  - raw `WER = 21.97%`
+  - normalized `WER = 6.36%`
+- A second controlled benchmark then added an explicit English language hint:
+  - `language_hint_mode = fleurs_primary`
+  - `temperature = 0.0`
+- Result:
+  - identical to the previous controlled run
+  - raw `WER = 22.43%`
+  - normalized `WER = 7.05%`
+- Conclusion:
+  - the missing `temperature = 0.0` was not the main explanation
+  - the English language hint did not explain the gap either
+
+### 6. Confirmed that sample size and metric framing explain much more of the gap
+
+- A larger FP8 English benchmark was then run on:
+  - `en_us limit100`
+- Result:
+  - raw `WER = 27.06%`
+  - normalized `WER = 5.96%`
+  - `0` empty predictions
+  - `elapsed_seconds = 141.63`
+  - `energy_joules = 24348.88`
+- This larger normalized English slice moved materially closer to the published Voxtral English
+  reference of roughly `4.9%`.
+- New reports written:
+  - `reports/fleurs_fp8_gap_temp0_en_us_limit20.json`
+  - `reports/energy_fleurs_fp8_gap_temp0_en_us_limit20.json`
+  - `reports/benchmark_fp8_gap_temp0_en_us_limit20.json`
+  - `reports/fleurs_fp8_gap_temp0_langhint_en_us_limit20.json`
+  - `reports/energy_fleurs_fp8_gap_temp0_langhint_en_us_limit20.json`
+  - `reports/benchmark_fp8_gap_temp0_langhint_en_us_limit20.json`
+  - `reports/fleurs_fp8_gap_limit100_en_us_limit100.json`
+  - `reports/energy_fleurs_fp8_gap_limit100_en_us_limit100.json`
+  - `reports/benchmark_fp8_gap_limit100_en_us_limit100.json`
+
+## Additional Findings From Today
+
+- The apparent English gap to the published Voxtral number is not mainly explained by the two
+  easiest decode-path hypotheses we tested:
+  - explicit `temperature = 0.0`
+  - explicit English language hint
+- The bigger factor is the evaluation frame itself:
+  - normalized metrics matter much more than raw WER
+  - a larger English slice narrows the gap substantially
+- Current key comparison:
+  - FP8 `en_us limit20`
+    - normalized `WER = 6.36%`
+  - FP8 `en_us limit100`
+    - normalized `WER = 5.96%`
+- So the remaining difference to the published Voxtral English result now looks much more like:
+  - sample-size variance
+  - normalization differences
+  - benchmark-stack differences
+  than a single missing decode flag.
+
+### 7. Ran the larger multilingual side-by-side instead of more tiny spot checks
+
+- The next question was reframed again before running more benchmarks:
+  - not "which other decode flag might help"
+  - but "does the broader same-harness multilingual picture still support the current story"
+- Instead of rerunning the already-stable English `limit20` anchor, the multilingual side-by-side
+  was expanded where it was still weak:
+  - keep the existing `en_us limit20` FP8 vs Whisper comparison
+  - expand `fr_fr` from `limit5` to `limit20`
+  - expand `hi_in` from `limit5` to `limit20`
+- New FP8 multilingual benchmark results:
+  - `fr_fr limit20`
+    - raw `WER = 24.91%`
+    - normalized `WER = 8.33%`
+    - `elapsed_seconds = 41.38`
+    - `energy_joules = 7448.59`
+  - `hi_in limit20`
+    - raw `WER = 30.10%`
+    - normalized `WER = 23.91%`
+    - `elapsed_seconds = 47.68`
+    - `energy_joules = 9092.83`
+- Matching Whisper large-v3 results on the same larger slices:
+  - `fr_fr limit20`
+    - raw `WER = 23.04%`
+    - normalized `WER = 6.73%`
+    - `elapsed_seconds = 49.52`
+    - `energy_joules = 6447.85`
+  - `hi_in limit20`
+    - raw `WER = 29.33%`
+    - normalized `WER = 25.43%`
+    - `elapsed_seconds = 85.05`
+    - `energy_joules = 13767.02`
+- This gives a stronger three-language side-by-side when combined with the existing
+  `en_us limit20` anchor:
+  - `en_us`
+    - FP8 normalized `WER = 6.36%`
+    - Whisper normalized `WER = 4.32%`
+  - `fr_fr`
+    - FP8 normalized `WER = 8.33%`
+    - Whisper normalized `WER = 6.73%`
+  - `hi_in`
+    - FP8 normalized `WER = 23.91%`
+    - Whisper normalized `WER = 25.43%`
+- The broader conclusion changed in a useful way:
+  - Whisper is still ahead on English and French
+  - FP8 is still ahead on Hindi normalized WER, but only slightly
+  - the earlier Hindi `limit5` edge was real in direction but overstated in size
+  - a simple three-language macro average of normalized WER is now close:
+    - FP8 `12.87%`
+    - Whisper `12.16%`
+  - total measured evaluation energy across those same three slices favors FP8:
+    - FP8 `21494.31 J`
+    - Whisper `23473.44 J`
+    - FP8 used about `8.43%` less energy on this current three-language board
+- New reports written:
+  - `reports/fleurs_fp8_multilingual_fr_fr_limit20.json`
+  - `reports/energy_fleurs_fp8_multilingual_fr_fr_limit20.json`
+  - `reports/benchmark_fp8_multilingual_fr_fr_limit20.json`
+  - `reports/fleurs_fp8_multilingual_hi_in_limit20.json`
+  - `reports/energy_fleurs_fp8_multilingual_hi_in_limit20.json`
+  - `reports/benchmark_fp8_multilingual_hi_in_limit20.json`
+  - `reports/fleurs_whisper_large_v3_fr_fr_limit20.json`
+  - `reports/energy_fleurs_whisper_large_v3_fr_fr_limit20.json`
+  - `reports/fleurs_whisper_large_v3_hi_in_limit20.json`
+  - `reports/energy_fleurs_whisper_large_v3_hi_in_limit20.json`
+
+### 8. Ran the substantially larger English FP8 slice
+
+- The next move from the benchmark note was executed directly:
+  - run a substantially larger normalized English FP8 slice before touching decode flags again
+- A new FP8 English benchmark was run on:
+  - `en_us limit500`
+- Result:
+  - raw `WER = 27.58%`
+  - normalized `WER = 6.49%`
+  - `1` empty prediction
+  - `elapsed_seconds = 651.27`
+  - `energy_joules = 154679.76`
+- This was the important change in interpretation:
+  - the earlier `en_us limit100` run at normalized `WER = 5.96%` now looks like the optimistic
+    slice, not the stable local English number
+  - the much larger `limit500` run moved back away from the published Voxtral English reference of
+    roughly `4.9%`
+  - so sample-size variance clearly mattered, but it no longer looks like the main remaining
+    explanation for the published-gap
+- Current English progression on the same local FP8 path:
+  - `limit20`
+    - normalized `WER = 6.36%`
+  - `limit100`
+    - normalized `WER = 5.96%`
+  - `limit500`
+    - normalized `WER = 6.49%`
+- One empty prediction appeared in the `limit500` run:
+  - sample id `1758`
+  - reference starts with:
+    - `the archipelago lies 120 km north of the peninsula...`
+  - the clip was somewhat quiet but did not cross the current boost threshold:
+    - `audio_peak_abs_before = 0.014361`
+    - `quiet_audio_boosted = False`
+- That is worth noting as an audio-prep edge case, but it is not enough by itself to explain the
+  whole difference between `5.96%` and `6.49%`.
+- New reports written:
+  - `reports/fleurs_fp8_gap_limit500_en_us_limit500.json`
+  - `reports/energy_fleurs_fp8_gap_limit500_en_us_limit500.json`
+  - `reports/benchmark_fp8_gap_limit500_en_us_limit500.json`
+
+### 9. Encoded the real Round 1 follow-up in the repo
+
+- The next low-risk submission moves were turned into concrete repo changes:
+  - `configs/vllm/fp8_round1.yaml` now sets:
+    - `kv_cache_dtype: fp8_e4m3`
+    - `enable_prefix_caching: true`
+  - the other `vLLM` configs now also set `enable_prefix_caching: true` explicitly
+  - a new warmup helper was added:
+    - `scripts/warm_fleurs_prefix_cache.py`
+- The installed WSL `vLLM` runtime was then checked directly instead of assuming the OpenAI-style
+  text-path behavior applies to speech-to-text.
+- Result:
+  - the speech-to-text path does support prefix caching
+  - but `/v1/audio/transcriptions` in the current runtime does not expose per-request
+    `cache_salt`
+  - so the practical warmup path is process-local:
+    - warm the same live server
+    - then run the measured evaluation
+- The most important post-run diagnostic was then written down explicitly:
+  - the large `en_us limit500` benchmark used `configs/vllm/fp8_round1.yaml`
+  - but the server log still showed:
+    - `kv_cache_dtype=auto`
+    - `Prefix cache hit rate: 0.0%`
+- So the repo is now better prepared for the next Round 1 rerun, but the measured `limit500`
+  run did not yet capture the hoped-for FP8-KV or prefix-cache savings.
+- That changes the honest interpretation again:
+  - the `limit500` benchmark is valid as a larger-slice quality and energy datapoint
+  - it is not evidence that the new runtime optimizations have already landed in measured results
+  - those gains remain unproven until a rerun shows the expected engine state in the logs
+
+## Updated Next Step
+
+1. rerun the English submission slice with the new FP8 mainline config and the warmup helper,
+2. verify from the server log that the rerun actually shows the intended runtime state:
+   - FP8 KV cache active instead of `auto`
+   - non-zero prefix-cache hits after warmup,
+3. align more closely to the official benchmark stack and normalization pipeline instead of
+   continuing local decode-flag sweeps or even larger English reruns,
+4. keep FP8 as the submission mainline, but describe it honestly as efficient and competitive
+   rather than benchmark-leading,
+5. keep GPTQ work isolated unless we intentionally switch back to the research branch.
+
+## April 21, 2026 Update
+
+### 1. Opened a decoder-skipping feasibility track instead of jumping straight into a model hack
+
+- The new PDF-driven idea was reframed before implementation:
+  - the first useful question is not "can we skip decoder passes already"
+  - it is "does our FLEURS data even show enough silence-heavy structure to justify that work"
+- A new low-risk research track was added so this idea stays isolated from:
+  - the FP8 submission mainline
+  - the GPTQ and `llmcompressor` research branch
+- New planning and documentation files:
+  - `docs/decoder_skipping_track.md`
+  - `configs/experiments.yaml` updated with `decoder_skip_feasibility`
+
+### 2. Added the first measurement tooling for the new track
+
+- A new script was added:
+  - `scripts/profile_fleurs_silence.py`
+- The script profiles FLEURS audio at an `80 ms` frame scale and records:
+  - silent-frame ratio
+  - leading silence
+  - trailing silence
+  - longest silent run
+  - effect of the repo's quiet-audio boost path
+- The purpose is explicit:
+  - estimate an upper bound on decoder-skipping opportunity from acoustic inactivity
+  - not claim to measure actual Voxtral pad-token rate yet
+- Shared reusable helper added:
+  - `src/voxtral_project/audio.py`
+  - new `analyze_audio_activity(...)` utility
+
+### 3. Found and fixed a real environment compatibility issue affecting all FLEURS scripts
+
+- A live smoke-test attempt on the new script exposed a broader repo problem:
+  - the Windows `.venv` had `datasets==4.8.4`
+  - the current `google/fleurs` path still relies on dataset-script support
+  - so FLEURS loading was broken for more than just the new script
+- The affected FLEURS-facing scripts were updated to use a shared loader path:
+  - `scripts/evaluate_fleurs.py`
+  - `scripts/warm_fleurs_prefix_cache.py`
+  - `scripts/benchmark_vllm_variant.py`
+  - `scripts/profile_fleurs_silence.py`
+- New shared helper added:
+  - `src/voxtral_project/dataset_utils.py`
+- This helper now fails with a clear repo-specific message when `datasets>=4` is installed
+  instead of surfacing a confusing low-level Hugging Face stack trace.
+
+### 4. Repaired the Windows utility environment back to the pinned requirements
+
+- The workspace requirements were reinstalled into the Windows `.venv`.
+- This downgraded `datasets` from:
+  - `4.8.4`
+  - to `3.6.0`
+- That change brings the local utility environment back in line with:
+  - `requirements.txt`
+  - which already pins `datasets>=2.18.0,<4`
+- Result:
+  - the FLEURS-based scripts are again aligned with the repo's stated dependency contract
+
+### 5. Completed the first live decoder-skipping feasibility smoke test
+
+- After restoring the pinned `datasets<4` environment and routing FLEURS loading through the new
+  shared helper, the new silence profiler ran successfully on:
+  - `en_us limit1`
+- First measured result:
+  - average raw silent-frame ratio `= 61.36%`
+  - clips with at least half silent frames `= 1 / 1`
+  - quiet-audio boost applied `= 0`
+- New report written:
+  - `reports/fleurs_silence_en_us_limit1.json`
+
+## New Findings From This Update
+
+- The decoder-skipping idea is worth exploring only as a measured research track for now.
+- The first live sample is directionally consistent with the PDF's premise:
+  - there is at least one real English FLEURS clip in our harness where most `80 ms` frames are
+    acoustically silent
+- The more urgent practical issue uncovered today was not model quality or energy:
+  - it was environment drift in the Windows-side FLEURS tooling
+- The repo is stronger after this update because:
+  - the new research direction now has a clean home
+  - the FLEURS loader assumptions are explicit
+  - the utility environment now matches the pinned requirements again
+
+## New Recommended Next Step
+
+1. run `scripts/profile_fleurs_silence.py` on the current English comparison slice once the
+   dataset is available locally in the intended runtime,
+2. use that report to decide whether decoder-skipping is a serious engineering path or just an
+   attractive theory,
+3. keep FP8 as the primary competition story unless this new measurement track shows a strong and
+   defendable opportunity.

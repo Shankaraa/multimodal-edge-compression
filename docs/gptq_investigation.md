@@ -492,3 +492,90 @@ The right next step is a small benchmark slice, not more compatibility spelunkin
 4. short transcription throughput
 
 Only after that should we decide whether this research branch earns more optimization work.
+
+## Mini Benchmark Result
+
+That benchmark decision has now been made.
+
+Using:
+
+- `scripts/benchmark_vllm_variant.py`
+
+we measured BF16, FP8 round 1, and the narrowed compressed-tensors artifact on the same
+`en_us limit 5` slice.
+
+### BF16
+
+- startup:
+  - `148.05 s`
+- GPU memory:
+  - `15138 MiB`
+- first request latency:
+  - `2.53 s`
+- normalized `WER`:
+  - `4.81%`
+- elapsed:
+  - `18.54 s`
+- energy:
+  - `2793.12 J`
+
+### FP8 round 1
+
+- startup:
+  - `132.09 s`
+- GPU memory:
+  - `14805 MiB`
+- first request latency:
+  - `1.71 s`
+- normalized `WER`:
+  - `4.81%`
+- elapsed:
+  - `14.69 s`
+- energy:
+  - `1891.11 J`
+
+### Narrowed compressed-tensors artifact
+
+- startup:
+  - `93.83 s`
+- GPU memory:
+  - `14588 MiB`
+- first request latency:
+  - `10.14 s`
+- normalized `WER`:
+  - `100.00%`
+- empty predictions:
+  - `5 / 5`
+- elapsed:
+  - `59.55 s`
+- energy:
+  - `8825.33 J`
+
+## What The Benchmark Means
+
+The bridge is still technically interesting, but it is not useful for ASR evaluation in its
+current state.
+
+The narrowed artifact:
+
+- boots faster,
+- uses slightly less GPU memory,
+- but returns empty transcriptions on real speech input,
+- and is dramatically slower and more energy-hungry once request handling is included.
+
+The server log repeatedly emits:
+
+- `Realtime model received empty multimodal embeddings for 1 input tokens`
+
+That is the most plausible explanation for the all-empty prediction outcome.
+
+## Updated Recommendation
+
+This branch should not get more benchmark time right now.
+
+The right conclusion is:
+
+1. FP8 stays the only serious compressed submission path.
+2. The compressed-tensors bridge remains documented as a research result, not a candidate result.
+3. The GPTQ-side branch only becomes interesting again if someone wants to debug the empty
+   multimodal-embedding failure specifically.
