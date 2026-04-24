@@ -1392,3 +1392,686 @@ submission-relevant code and docs.
    attractive theory,
 3. keep FP8 as the primary competition story unless this new measurement track shows a strong and
    defendable opportunity.
+
+## April 22, 2026 Update
+
+### 1. Added a benchmark-aligned scoring profile instead of guessing about the leaderboard
+
+- The next benchmarking question was reframed before more runs:
+  - not "what else can we tweak in decoding"
+  - but "does a scorer closer to the Open ASR benchmark frame actually change the result"
+- The evaluator was extended to keep the current local metrics and add a second scoring profile:
+  - `open_asr_like`
+- New repo changes:
+  - `src/voxtral_project/text.py`
+    - added `open_asr_like` transcript rescoring
+  - `scripts/evaluate_fleurs.py`
+    - now records both local and benchmark-aligned metric profiles
+  - `scripts/recompute_report_metrics.py`
+    - now recomputes the new profile for existing reports too
+  - `scripts/benchmark_vllm_variant.py`
+    - now carries dataset-source selection and benchmark-aligned WER into future benchmark runs
+  - `requirements.txt`
+    - now includes `num2words`
+
+### 2. Added a closer dataset-wrapper path for future comparisons
+
+- The repo now supports a second dataset source for FLEURS-style evaluation:
+  - `google_fleurs`
+  - `open_asr_multilingual`
+- Shared loader update:
+  - `src/voxtral_project/dataset_utils.py`
+- The public multilingual benchmark wrapper was validated directly on `en_us`:
+  - the sample exposed fields:
+    - `audio`
+    - `duration`
+    - `file_name`
+    - `source_lang`
+    - `target_lang`
+    - `text`
+  - the recovered transcript text matched the expected English sentence content
+- One integration bug was found and fixed immediately:
+  - the first loader version inherited `token=True` from the upstream helper
+  - that unnecessarily required a local Hugging Face login for a public dataset
+  - the repo loader now works without forcing a token
+
+### 3. Recomputed the key English reports under the new scorer
+
+- Existing English reports were recomputed in place:
+  - `reports/fleurs_fp8_en_us_limit20_quietfix.json`
+  - `reports/fleurs_fp8_gap_limit100_en_us_limit100.json`
+  - `reports/fleurs_fp8_gap_limit500_en_us_limit500.json`
+  - `reports/fleurs_whisper_large_v3_en_us_limit20.json`
+- Result:
+  - the new `open_asr_like` English WER was identical to the current normalized English WER on all
+    of those reports
+- Current English progression:
+  - FP8 `limit20`
+    - local normalized `WER = 6.36%`
+    - `open_asr_like WER = 6.36%`
+  - FP8 `limit100`
+    - local normalized `WER = 5.96%`
+    - `open_asr_like WER = 5.96%`
+  - FP8 `limit500`
+    - local normalized `WER = 6.49%`
+    - `open_asr_like WER = 6.49%`
+  - Whisper `limit20`
+    - local normalized `WER = 4.32%`
+    - `open_asr_like WER = 4.32%`
+- This is the key conclusion:
+  - the published English gap does not move at all under the benchmark-aligned rescoring path
+  - so the remaining English difference is not mainly a text-normalization choice on our side
+
+### 4. Recomputed the larger French and Hindi side-by-side too
+
+- Existing multilingual `limit20` reports were recomputed in place:
+  - `reports/fleurs_fp8_multilingual_fr_fr_limit20.json`
+  - `reports/fleurs_whisper_large_v3_fr_fr_limit20.json`
+  - `reports/fleurs_fp8_multilingual_hi_in_limit20.json`
+  - `reports/fleurs_whisper_large_v3_hi_in_limit20.json`
+- Result:
+  - `fr_fr`
+    - FP8 local normalized `WER = 8.33%`
+    - FP8 `open_asr_like WER = 8.11%`
+    - Whisper local normalized `WER = 6.73%`
+    - Whisper `open_asr_like WER = 6.52%`
+  - `hi_in`
+    - FP8 local normalized `WER = 23.91%`
+    - FP8 `open_asr_like WER = 14.74%`
+    - Whisper local normalized `WER = 25.43%`
+    - Whisper `open_asr_like WER = 13.82%`
+- This changed the interpretation again:
+  - English stays exactly the same
+  - French moves only slightly
+  - Hindi moves a lot for both systems and flips the local FP8 edge into a slight Whisper edge
+- Current three-language `open_asr_like` macro average:
+  - FP8 `= 9.74%`
+  - Whisper `= 8.22%`
+
+## New Findings From This Update
+
+- The benchmark-alignment work did not rescue the English published-gap story:
+  - English is unchanged under the new scorer
+- So the remaining English gap now looks even less like:
+  - decode flags
+  - slice size
+  - or our local normalization choice alone
+- And more like:
+  - full benchmark-stack differences
+  - dataset-wrapper differences
+  - manifest or procedure differences
+- The multilingual comparison is also now less flattering to FP8 than the earlier local
+  normalization implied:
+  - under the local normalized scorer, FP8 still had a slight Hindi edge
+  - under the benchmark-aligned rescoring path, Whisper is ahead on English, French, and Hindi
+- FP8 still remains the right submission mainline because:
+  - it is the best compressed Voxtral path in the repo
+  - it still wins materially on efficiency against BF16
+  - but the honest story is now more clearly about practicality and efficiency than benchmark
+    leadership
+
+## New Recommended Next Step
+
+1. run the next public-comparison experiment on the `open_asr_multilingual` dataset wrapper or a
+   closer manifest-style benchmark path,
+2. stop treating local scorer changes as the likely explanation for the English published-gap,
+3. keep FP8 as the submission mainline, but frame it as efficient and credible rather than
+   benchmark-leading.
+
+### 5. Ran the public `open_asr_multilingual` English comparison
+
+- The next practical three-part move was executed directly:
+  - run FP8 on `open_asr_multilingual`
+  - run Whisper on the same wrapper and slice
+  - compare both against the existing `google/fleurs` anchors
+- A new FP8 benchmark was run on:
+  - `dataset_source = open_asr_multilingual`
+  - `lang = en_us`
+  - `limit = 20`
+- FP8 result on the public wrapper:
+  - raw `WER = 14.35%`
+  - local normalized `WER = 7.01%`
+  - `open_asr_like WER = 7.01%`
+  - `elapsed_seconds = 56.40`
+  - `energy_joules = 8244.80`
+- Matching Whisper result on the same public wrapper:
+  - raw `WER = 11.24%`
+  - local normalized `WER = 4.21%`
+  - `open_asr_like WER = 4.21%`
+  - `elapsed_seconds = 92.13`
+  - `energy_joules = 8844.86`
+- Compared against the existing `google/fleurs` English anchors:
+  - FP8 moved from `6.36%` to `7.01%`
+  - Whisper moved from `4.32%` to `4.21%`
+  - the English FP8-minus-Whisper gap widened from `2.05` points to `2.80` points
+- This is the key conclusion from the wrapper test:
+  - dataset-wrapper differences do matter
+  - but they do not move the English gap in Voxtral's favor
+  - the public wrapper makes the current English quality story look slightly worse for FP8, not
+    better
+- New reports written:
+  - `reports/fleurs_fp8_openasr_en_us_limit20.json`
+  - `reports/energy_fleurs_fp8_openasr_en_us_limit20.json`
+  - `reports/benchmark_fp8_openasr_en_us_limit20.json`
+  - `reports/fleurs_whisper_large_v3_openasr_en_us_limit20.json`
+  - `reports/energy_fleurs_whisper_large_v3_openasr_en_us_limit20.json`
+
+### 6. Fixed one benchmark-helper inconsistency uncovered by the wrapper run
+
+- While reviewing the new wrapper benchmark, one internal inconsistency was found:
+  - `scripts/benchmark_vllm_variant.py` was still using `google/fleurs` for its
+    `first_request` preview even when the actual evaluation used `open_asr_multilingual`
+- That helper was updated so future wrapper benchmarks now:
+  - pull the first sample from the selected dataset source
+  - recover the correct transcript field through the shared dataset helper
+
+### 7. Noted one lingering environment quirk on the Whisper wrapper path
+
+- The Whisper `open_asr_multilingual` run wrote valid report and energy files, but the Python
+  process still ended with:
+  - `return_code = -6`
+  - a late finalization crash after outputs were already saved
+- So:
+  - the saved benchmark numbers are usable
+  - but the runner state is not clean yet and should not be treated as fully production-stable
+
+## New Findings From This Update
+
+- We have now done the full practical comparison loop:
+  - benchmark-aligned rescoring
+  - public-wrapper FP8 run
+  - public-wrapper Whisper run
+- The English published-gap story is now even clearer:
+  - it is not a decode-flag problem
+  - it is not mainly a local scorer problem
+  - and the public wrapper does not reduce it
+- That means the remaining mismatch is most plausibly in:
+  - deeper benchmark procedure differences
+  - manifest construction
+  - evaluation-stack details beyond the wrapper and transcript normalizer
+
+## Updated Recommended Next Step
+
+1. move from the public-wrapper check to a closer manifest-style benchmark procedure,
+2. stop expecting local scorer or wrapper changes to explain away the English published-gap,
+3. keep FP8 as the submission mainline, but frame it as efficient and credible rather than
+   benchmark-leading.
+
+## April 22, 2026 Round-One Positioning Update
+
+### 1. Reframed the problem
+
+The right question for today was not "can we squeeze out one more benchmark win?" It was:
+
+- what increases the probability of clearing round one without making claims that can get picked
+  apart immediately.
+
+That changed the working strategy:
+
+- stop treating this as a last-mile inference-tuning problem
+- treat it as a selection problem
+- tighten the submission around the strongest validated FP8 result
+
+### 2. Locked the defended claim to the strongest validated FP8 anchor
+
+The defended round-one claim is now deliberately narrower:
+
+- FP8 is the strongest compressed Voxtral path currently working in the repo
+- on the trusted `en_us limit20` comparison, FP8 matches the BF16 normalized WER at `6.36%`
+- FP8 is about `24%` faster and about `39%` lower energy than the BF16 reference on that same
+  slice
+- stronger public ASR baselines still lead on the benchmark-aligned quality view
+
+This is a better round-one claim because it is:
+
+- true
+- measured
+- easy to defend
+- still competitive enough to matter
+
+### 3. Explicitly removed prefix cache from the defended submission story
+
+This was the most important strategic correction.
+
+Recent validation already showed:
+
+- `/v1/audio/transcriptions` still reported `Prefix cache hit rate: 0.0%`
+- the fresh TRITON-backed validation run came in at `6.82%` normalized WER and `7398 J`
+- so prefix caching is not currently a measured uplift we should sell
+
+Decision:
+
+- keep prefix-cache investigation as optional future work
+- do not include prefix-cache benefit in the defended round-one claim
+
+### 4. Updated the submission-facing docs to match the evidence
+
+The round-one package was tightened to make the story more selection-friendly and less fragile:
+
+- `README.md`
+  - now frames FP8 as credible and efficient rather than benchmark-leading
+  - stops presenting prefix-cache warmup as part of the main submission recipe
+- `docs/fp8_mainline_track.md`
+  - now treats prefix cache as unresolved rather than part of the mainline uplift
+- `docs/submission_candidate_summary.md`
+  - now centers the strongest validated claim and adds a direct "why this can still get through
+    round one" section
+- `docs/submission_benchmark_table.md`
+  - now includes the benchmark-aligned external read and makes the competition framing more honest
+- `docs/submission_readiness_checklist.md`
+  - now treats the polished round-one narrative as complete and explicitly checks that prefix cache
+    is not over-claimed
+- `docs/fp8_benchmark_summary.md`
+  - now reflects the harsher benchmark-aligned external picture
+- `docs/round1_submission_narrative.md`
+  - added as a ready-to-use short submission narrative
+- `reports/team_status.md`
+  - updated with the current management-level round-one decision
+
+### 5. New strategic verdict
+
+The submission is most competitive when it is framed as:
+
+- a reproducible edge-serving FP8 Voxtral system
+- with real, measured efficiency gains
+- with cleaned-up and honest evaluation
+- and with multilingual credibility
+
+It is less competitive when framed as:
+
+- a system that already wins on benchmark quality
+- a system whose round-one story depends on prefix-cache gains
+- a system that implies parity with Whisper or the published Voxtral numbers
+
+That means the highest-probability round-one angle is now clear:
+
+- lead with compression discipline and deployment realism
+- keep the external quality gap explicit
+- avoid claims that depend on unresolved runtime behavior
+
+## April 22, 2026 Speech-Gating Probe
+
+### 1. Built a benchmarkable silence-gating path
+
+To move beyond plain FP8, a first application-layer compute-reduction path was implemented in the
+shared audio prep stack.
+
+What changed:
+
+- `src/voxtral_project/audio.py`
+  - added a speech-aware gating path that can:
+    - trim leading silence,
+    - trim trailing silence,
+    - optionally compress long internal silent spans,
+    - and record exact gating diagnostics per sample
+- `scripts/evaluate_fleurs.py`
+  - now accepts gating controls and writes sample-level gating diagnostics into the report JSON
+- `scripts/benchmark_vllm_variant.py`
+  - now forwards the same gating controls into both the first-request probe and the evaluated run
+
+This was the important engineering step:
+
+- the contender lever is now testable inside the normal evaluation flow
+- no separate ad hoc script is required to benchmark it
+
+### 2. First probe: conservative edge trim
+
+The first real probe used edge-only silence trimming on `en_us limit5`:
+
+- label:
+  - `fp8_gate_edgeprobe`
+- settings:
+  - `gate_silence = true`
+  - `preserve_leading_silence_ms = 160`
+  - `preserve_trailing_silence_ms = 160`
+  - no internal silence compression
+
+What it showed:
+
+- real removable edge silence exists
+- on the first sample, gating removed `2.72 s` from a `10.56 s` clip
+- but the small-slice quality moved the wrong way:
+  - normalized WER became `8.65%`
+
+Interpretation:
+
+- naive edge trimming is not a free win
+- the likely failure mode is clipping quiet trailing speech, not just silence
+
+### 3. Second probe: finer frame size and lower activity thresholds
+
+A refined edge-trim pass was then tested with:
+
+- `frame_ms = 40`
+- `peak_threshold = 0.005`
+- `rms_threshold = 0.0015`
+- `preserve_leading_silence_ms = 320`
+- `preserve_trailing_silence_ms = 480`
+
+Result:
+
+- label:
+  - `fp8_gate_edgeprobe_v2b`
+- first sample still removed meaningful silence:
+  - `2.16 s` removed from `10.56 s`
+- small-slice normalized WER improved from the first probe:
+  - `6.73%`
+- sample-level outputs looked materially better than the first probe
+
+But this is still not a clean contender result yet:
+
+- the quality is still above the older `4.81%` small-slice anchor
+- and the benchmark harness state became noisy because a prior server process stayed alive and
+  contaminated later startup and energy comparisons
+
+### 4. Updated tactical verdict
+
+This changed the contender read in an important way:
+
+- the gating mechanism itself is real and now benchmarkable
+- the opportunity signal is real on at least some clips
+- but naive silence trimming is not ready to be sold as the round-one differentiator
+
+The next serious move is now narrower:
+
+1. run a clean same-server gated-vs-control comparison,
+2. harden the heuristic for quiet-audio cases,
+3. and only then decide whether speech-aware gating is strong enough to become the second lever on
+   top of FP8.
+
+### 5. Prepared-audio audit corrected the opportunity estimate
+
+The most important update after the first gate probes was not another benchmark. It was fixing the
+measurement frame.
+
+The earlier silence summary was too pessimistic and too noisy because:
+
+- the raw-audio view over-classified several quiet clips as "all silence"
+- that is not the audio the model actually sees
+- the only useful planning view is the prepared-audio path after quiet-boosting
+
+So the silence profiler was updated to report prepared-audio edge-trim opportunity directly.
+
+What the refreshed `en_us limit20` audit now shows with `160/160 ms` preserve windows:
+
+- average prepared edge-trim candidate:
+  - `1.944 s` per clip
+- average prepared edge-trim candidate ratio:
+  - `20.4%`
+- median prepared edge-trim candidate ratio:
+  - `22.7%`
+- clips with at least `20%` prepared edge-trim opportunity:
+  - `12/20`
+- clips with at least `30%` prepared edge-trim opportunity:
+  - `5/20`
+
+That changes the strategic read:
+
+- there is still real application-layer compute to remove
+- the idea is not dead
+- but the current trimming heuristic is too sharp around clip endings
+
+### 6. New gating verdict
+
+The live evidence now supports a narrower conclusion:
+
+- speech-aware edge trimming is a legitimate Round 1 contender lever
+- the current `160/160 ms` setting is not safe enough
+- the problem is probably trailing-speech clipping, not the existence of removable silence itself
+
+This is why the small-slice gate probe matters so much:
+
+- ungated FP8 `limit5` anchor:
+  - normalized WER `4.81%`
+- gated edge probe with `160/160 ms`:
+  - normalized WER `8.65%`
+
+So the correct next move is not to abandon gating. It is to retune it conservatively.
+
+The audit implies that even with a much larger trailing preserve window, meaningful edge-trim
+headroom remains:
+
+- `160/640 ms` still suggests roughly `16%` average trim headroom on the audited slice
+- `160/960 ms` still suggests roughly `13.5%` average trim headroom
+
+That is enough remaining upside to justify another clean benchmark pass.
+
+### 7. Practical blocker on the next retune
+
+The next clean retune benchmark was not completed in this pass because the GPU was already occupied
+by another live FP8 benchmark process using the same Voxtral server path.
+
+Decision:
+
+- stop at the measurement boundary instead of stacking another noisy overlapping run
+- update the daily record with the corrected audit
+- make the next benchmark explicit
+
+Next benchmark to run when the GPU window is clean:
+
+- speech gating enabled
+- preserve leading silence:
+  - `160 ms`
+- preserve trailing silence:
+  - start with `960 ms`
+- no internal silence compression yet
+
+If that still loses too much quality, the next fallback is:
+
+- `160/640 ms` same benchmark
+- then reconsider whether edge-only gating can be made safe enough for Round 1
+
+## April 22, 2026 Decoder-Skipping Gate Follow-Through
+
+### 1. Finished the real feasibility gate on the trusted English slice
+
+The earlier `limit1` silence result was only enough to say the PDF idea was plausible.
+
+The real question was:
+
+- does the current `en_us limit20` anchor actually contain enough removable low-information audio
+  to justify continued work?
+
+That gate is now answered with a proper report:
+
+- `reports/fleurs_silence_en_us_limit20.json`
+
+Key findings from that report:
+
+- average raw silent-frame ratio:
+  - `68.27%`
+- median raw silent-frame ratio:
+  - `96.02%`
+- clips with at least half silent frames:
+  - `14 / 20`
+- average prepared edge-trim candidate:
+  - `1.944 s`
+- clips with at least `20%` prepared edge-trim opportunity:
+  - `12 / 20`
+
+Interpretation:
+
+- the PDF premise has real signal on our current English slice
+- this is not a theoretical-only idea anymore
+- there is enough silence-heavy structure to justify at least one controlled benchmark
+
+### 2. Resolved the apparent multi-hour runtime issue
+
+The earlier `profile_fleurs_silence.py --lang en_us --limit 20` run looked pathological.
+
+That turned out not to be true workload cost.
+
+What actually happened:
+
+- the interrupted run left orphaned Python processes alive
+- no report was written from that attempt
+- a clean rerun completed successfully in about `8 s`
+- direct dataset iteration for the first `20` FLEURS samples was only about `4.75 s`
+
+Conclusion:
+
+- the long runtime was a stuck background run or transient Hub stall
+- not a sign that the silence-feasibility tooling is intrinsically too slow to use
+
+### 3. Ran the first clean `en_us limit20` control vs gating comparison
+
+To remove earlier harness noise, the next step was a full same-slice benchmark using the normal
+FP8 benchmark runner.
+
+Three runs matter:
+
+- fresh control:
+  - `reports/benchmark_fp8_gate_control_en20_en_us_limit20.json`
+- aggressive boundary gate:
+  - `reports/benchmark_fp8_gate_boundary_en20_en_us_limit20.json`
+- softer boundary gate:
+  - `reports/benchmark_fp8_gate_boundary_soft_en20_en_us_limit20.json`
+
+Important control note:
+
+- the first fresh control run had large cold-start and compilation overhead
+- so the meaningful comparison is the soft gate against the later warm control:
+  - `reports/benchmark_fp8_gate_control_warm_en20_en_us_limit20.json`
+
+### 4. Aggressive edge trimming failed cleanly
+
+The aggressive boundary-only gate used:
+
+- `frame_ms = 80`
+- `peak_threshold = 0.01`
+- `rms_threshold = 0.003`
+- `preserve_leading_silence_ms = 160`
+- `preserve_trailing_silence_ms = 160`
+
+Result:
+
+- normalized WER:
+  - `15.45%`
+- energy:
+  - `6651.24 J`
+- elapsed:
+  - `40.84 s`
+
+This was fast, but quality collapsed.
+
+Sample-level summary:
+
+- gating changed `15 / 20` clips
+- average removed audio:
+  - `1.935 s`
+- average removed fraction:
+  - `20.3%`
+
+Interpretation:
+
+- simple edge trimming at the default thresholds is too aggressive
+- the gain is real, but it is not competitively usable in this form
+
+### 5. Softer edge trimming survived quality, but the gain is modest
+
+The softer boundary-only gate used:
+
+- `peak_threshold = 0.005`
+- `rms_threshold = 0.0015`
+- `preserve_leading_silence_ms = 400`
+- `preserve_trailing_silence_ms = 400`
+
+The fair comparison is:
+
+- warm control:
+  - normalized WER `= 6.82%`
+  - energy `= 7102.34 J`
+  - elapsed `= 43.48 s`
+- soft boundary gate:
+  - normalized WER `= 6.82%`
+  - energy `= 6588.71 J`
+  - elapsed `= 41.78 s`
+
+Measured delta versus the warm control:
+
+- normalized WER:
+  - unchanged
+- elapsed:
+  - about `1.70 s` lower
+  - about `3.9%` lower
+- energy:
+  - about `513.64 J` lower
+  - about `7.2%` lower
+
+Sample-level summary:
+
+- gating changed `14 / 20` clips
+- average removed audio:
+  - `0.953 s`
+- total removed audio across the slice:
+  - `19.06 s`
+
+Interpretation:
+
+- soft edge trimming is viable as a small efficiency optimization
+- it is not the dramatic second lever suggested by the raw silence statistics
+- most of the earlier apparent giant win was cold-start noise, not a true steady-state effect
+
+### 6. Updated verdict on the decoder-skipping idea
+
+The final read is now more precise.
+
+What is true:
+
+- the PDF intuition is directionally right
+- the current English slice is silence-heavy enough to justify investigation
+- a cheap application-layer boundary trim can save a small amount of time and energy without
+  hurting normalized WER when tuned conservatively
+
+What is not true:
+
+- naive edge trimming is not a breakthrough
+- the current boundary-only heuristic is not strong enough to be the main differentiator
+- raw silence ratio does not translate 1:1 into deployable decoder-skip savings
+
+### 7. Next move is no longer more boundary trimming
+
+The best next step changed after the controlled comparison.
+
+It is no longer:
+
+- keep sweeping edge-trim thresholds
+
+It is now:
+
+1. instrument actual Voxtral pad-token or decoder-step behavior on the same evaluation slice,
+2. measure whether the model really spends many steps in low-information pad-heavy regions,
+3. only then decide whether a deeper scheduling or speculative-decoding path is justified.
+
+So the new idea is now classified as:
+
+- real signal
+- small win at the audio-boundary level
+- still unproven as a major decoder-level optimization
+
+## April 24, 2026 Final Consolidation And Push
+
+### 1. Consolidated concluded chat work
+
+All active workstreams were treated as concluded for the current round, and the repository was
+prepared for a single final push rather than leaving parallel chat output stranded locally.
+
+### 2. Prepared submission-facing documentation
+
+The current submission story is now documented around a conservative and defensible framing:
+
+- FP8 is the best compressed Voxtral path currently working in this repo.
+- FP8 improves efficiency versus the BF16 Voxtral reference on the trusted English slice.
+- Benchmark-aligned external comparisons are included as context, not hidden.
+- Prefix-cache and speech-gating findings are recorded as investigations, not overstated claims.
+
+### 3. Prepared code and configuration changes for commit
+
+The final push includes the updated benchmark/evaluation tooling, audio preprocessing utilities,
+dataset helpers, FP8 serving configuration, README guidance, submission docs, and the new team
+instruction file.
+
+### 4. Push intent
+
+The repository state is being committed and pushed to `origin/main` so the GitHub repo becomes
+the current source of truth after the chats conclude.

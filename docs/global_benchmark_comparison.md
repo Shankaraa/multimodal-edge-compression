@@ -113,25 +113,109 @@ So the remaining gap now looks less like "we just needed a bigger English slice"
 
 than a single missing decoding flag.
 
+## Benchmark-Alignment Rescoring
+
+We then added a second scoring profile to the repo:
+
+- keep the current local normalized metrics for continuity
+- add an `open_asr_like` profile inspired by `huggingface/open_asr_leaderboard`
+- reuse the exact same saved predictions and references so the rescoring isolates scoring-frame
+  effects instead of mixing in new inference variance
+
+### English rescoring check
+
+This was the most important check for the published-gap question.
+
+| FP8 English slice | Current norm WER | Open-ASR-like WER | Read |
+| --- | ---: | ---: | --- |
+| `limit20` | 6.36% | 6.36% | no change |
+| `limit100` | 5.96% | 5.96% | no change |
+| `limit500` | 6.49% | 6.49% | no change |
+
+This is the key result:
+
+- the published English gap does not move at all under the new benchmark-aligned rescoring path
+- so the remaining English difference is not explained by our current text-normalization choice
+- the problem is farther out in the benchmark frame:
+  - dataset wrapper differences
+  - manifest procedure differences
+  - or other evaluation-stack details beyond text normalization alone
+
+### Three-language rescoring check
+
+We also rescored the current same-harness `en_us` / `fr_fr` / `hi_in` side-by-side with the new
+profile.
+
+| Language | FP8 open-ASR-like WER | Whisper open-ASR-like WER | Read |
+| --- | ---: | ---: | --- |
+| `en_us` | 6.36% | 4.32% | Whisper ahead |
+| `fr_fr` | 8.11% | 6.52% | Whisper ahead |
+| `hi_in` | 14.74% | 13.82% | Whisper slightly ahead |
+
+That changed the multilingual read in an important way:
+
+- English stayed exactly the same
+- French moved only slightly
+- Hindi moved a lot for both systems, and the slight local FP8 edge flipped to a slight Whisper edge
+- the three-language macro average under `open_asr_like` scoring is no longer especially close:
+  - FP8: `9.74%`
+  - Whisper: `8.22%`
+
+## Public Wrapper Comparison
+
+We then ran the next direct test on the public `open_asr_multilingual` wrapper itself instead of
+staying inside `google/fleurs`.
+
+This used the current English `limit20` comparison for both systems.
+
+| Dataset wrapper | System | Raw WER | Open-ASR-like WER | Energy (J) | Read |
+| --- | --- | ---: | ---: | ---: | --- |
+| `google_fleurs` | FP8 | 21.97% | 6.36% | 4952.89 | current local anchor |
+| `google_fleurs` | Whisper | 20.59% | 4.32% | 3258.57 | current local anchor |
+| `open_asr_multilingual` | FP8 | 14.35% | 7.01% | 8244.80 | public wrapper check |
+| `open_asr_multilingual` | Whisper | 11.24% | 4.21% | 8844.86 | public wrapper check |
+
+The important comparison is the benchmark-aligned WER:
+
+- FP8 moved from `6.36%` to `7.01%`
+- Whisper moved from `4.32%` to `4.21%`
+- so the English FP8-minus-Whisper gap widened from `2.05` points to `2.80` points
+
+This is the key verdict from the wrapper run:
+
+- dataset-wrapper differences do matter
+- but they do not move the English story in Voxtral's favor
+- the public wrapper makes the current local English quality gap look slightly worse for FP8, not
+  better
+
+One runtime caveat is worth being explicit about:
+
+- the Whisper `open_asr_multilingual` run wrote valid output files, but the Python process still
+  ended with a late finalization crash (`return_code = -6`) after saving the report and energy
+  JSON
+- so the quality numbers are usable, but that environment quirk should not be mistaken for a clean
+  runner state yet
+
 ## What This Actually Means
 
 - FP8 is still a real win over our BF16 Voxtral reference because it preserves normalized English
   WER while cutting time and energy materially.
 - Whisper large-v3 currently beats our local Voxtral setup on the same normalized English slice.
-- The multilingual picture is still mixed, but now on a less flimsy frame:
-  - Whisper is ahead on English and French at `limit20`
-  - FP8 is still ahead on Hindi normalized WER at `limit20`, but only slightly
-  - the simple three-language macro average is close enough that the story is no longer
-    "Whisper dominates everywhere"
+- The multilingual picture now depends on which scoring frame we are using:
+  - under our local normalized scorer, FP8 still holds a slight Hindi edge
+  - under the new `open_asr_like` scorer, Whisper is ahead on all three current languages
 - The published-gap diagnosis is now clearer:
   - decoding knobs we tested did not explain it
   - one intermediate larger English slice narrowed it materially
   - the much larger English slice did not hold that gain
   - a larger multilingual side-by-side showed the external comparison is mixed and closer than the
     tiny spot checks implied
-- So the current FP8 submission path is credible, efficient, and competitive, but not yet the
-  strongest overall ASR result on our current local benchmark frame, and the published English gap
-  now looks more like a benchmarking-frame issue than a slice-size issue.
+  - benchmark-aligned rescoring did not improve the English gap at all
+  - the public `open_asr_multilingual` wrapper widened the English FP8-vs-Whisper gap instead of
+    narrowing it
+- So the current FP8 submission path is credible and efficient, but not yet the strongest overall
+  ASR result on our current benchmark frames, and the published English gap now looks much more
+  like a full evaluation-stack issue than a slice-size or scorer issue.
 
 ## Public Reference Anchors
 
@@ -154,16 +238,16 @@ The current submission story should be:
 - we have a working compressed Voxtral path
 - FP8 is materially better than our BF16 Voxtral serving reference on this hardware
 - our evaluation is now more honest because it includes normalized ASR metrics
-- strong external baselines like Whisper large-v3 still set a slightly higher bar on the current
-  multilingual quality view
-- FP8 remains attractive because it stays close on normalized WER while using less evaluation
-  energy across the current three-language side-by-side
+- strong external baselines like Whisper large-v3 still set a higher bar on quality under the
+  current benchmark-aligned rescoring view
+- FP8 remains attractive because it is still the strongest compressed Voxtral path here and it uses
+  less evaluation energy across the current three-language local side-by-side
 
 ## Best Next Step
 
-1. align more closely to the official benchmark stack and normalization pipeline rather than
-   continuing local flag sweeps or even larger English reruns
-2. keep FP8 as the submission mainline, but describe it honestly as efficient and competitive,
-   not clearly ahead of strong public ASR baselines
-3. only run another large English slice if we need a variance estimate, not as the main gap
-   explanation anymore
+1. move from the wrapper check to a closer manifest-style benchmark procedure rather than
+   continuing local scorer experiments
+2. keep FP8 as the submission mainline, but describe it honestly as efficient and practical,
+   not quality-leading against strong public baselines
+3. only run another large English slice if we need variance estimates, not as the main explanation
+   for the published gap

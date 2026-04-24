@@ -29,7 +29,8 @@ It is intentionally practical:
 - [x] Honest caveat handling for Japanese scoring
 - [x] Submission-facing benchmark table
 - [x] Mainline track doc
-- [ ] Short final submission narrative polished
+- [x] Short final submission narrative polished
+- [x] Prefix-cache claim removed from the defended Round 1 story
 - [ ] One final acceptance-oriented checklist pass before sending
 
 ## Current Evidence We Can Already Stand Behind
@@ -66,6 +67,8 @@ It is intentionally practical:
   English reference.
 - Multilingual spot checks show the path is not English-only.
 - Japanese is included honestly with a CER-style reading because raw word WER is misleading there.
+- Prefix caching is not part of the defended performance claim because the measured speech path has
+  not shown realized cache reuse yet.
 
 ## What Should Not Block The First Submission
 
@@ -79,10 +82,11 @@ These are important later, but they should not stop the first strong submission.
 
 ## What Still Needs Tightening Before We Feel Fully Comfortable
 
-- [ ] write or polish the short submission narrative
-- [ ] decide whether one more multilingual spot check is worth the time
-- [ ] make sure README points clearly to the current candidate docs
-- [ ] keep the benchmark table and daily log aligned
+- [x] write or polish the short submission narrative
+- [x] make sure README points clearly to the current candidate docs
+- [x] keep the benchmark table and daily log aligned
+- [ ] do one final wording pass to ensure the submission emphasizes efficiency and reproducibility
+      instead of benchmark leadership
 
 ## Recommended Final Pre-Submission Pass
 
@@ -92,6 +96,8 @@ Before the actual first submission:
 2. Re-read the candidate summary.
 3. Confirm the FP8 config and runtime values one last time.
 4. Make sure the submission text does not over-claim beyond the current evidence.
+5. Make sure no round-one claim depends on prefix-cache gain, unpublished benchmark parity, or
+   stronger multilingual coverage than we actually measured.
 
 ## Decision Rule
 

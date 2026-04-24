@@ -42,12 +42,12 @@ It is meant to answer three questions quickly:
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | Whisper large-v3 | 20 | 20.59% | 4.32% | 0 | 34.77 | 3258.57 | stronger external baseline on this English slice |
 
-### External multilingual anchors
+### Benchmark-aligned multilingual anchor
 
-| Language | Whisper raw WER | Whisper norm WER | Notes |
+| View | FP8 | Whisper | Notes |
 | --- | ---: | ---: | --- |
-| `fr_fr` | 21.85% | 8.07% | ahead of the current FP8 French spot check |
-| `hi_in` | 32.52% | 28.46% | behind the current FP8 Hindi spot check |
+| `open_asr_like` macro WER on `en_us` / `fr_fr` / `hi_in` | 9.74% | 8.22% | benchmark-aligned view favors Whisper overall |
+| `open_asr_multilingual en_us limit20` | 7.01% | 4.21% | public wrapper did not reduce the English gap |
 
 ### Multilingual spot checks
 
@@ -87,7 +87,9 @@ So Japanese currently exposes an evaluation-metric caveat, not a simple FP8 coll
 - FP8 is also producing stable non-empty outputs on Hindi, French, and Japanese.
 - Japanese needs better scoring treatment before it should be used as a headline quality number.
 - Whisper large-v3 currently beats our local Voxtral setup on the same normalized English slice.
-- The external multilingual comparison is mixed rather than uniformly against FP8.
+- The benchmark-aligned multilingual comparison also favors Whisper overall.
+- Prefix caching is enabled in config, but the measured speech path has not yet shown realized
+  cache reuse.
 
 ## Submission-Relevant Interpretation
 
@@ -102,8 +104,8 @@ Right now, FP8 is the strongest practical compression path because:
 
 ## Best Next Step
 
-The next most useful FP8 mainline improvements are:
+The next most useful round-one improvements are:
 
-1. expand the benchmark matrix with one more carefully chosen language only if broader confidence is still needed
-2. keep comparing all new compressed runs against the quiet-audio-aware BF16 reference
-3. turn the current benchmark snapshot into a cleaner submission-facing table or chart
+1. keep comparing all new compressed runs against the quiet-audio-aware BF16 reference
+2. tighten the submission language around validated FP8 efficiency and honest caveats
+3. treat manifest-style benchmark alignment as later work rather than a round-one blocker

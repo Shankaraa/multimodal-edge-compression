@@ -33,6 +33,7 @@ def main() -> int:
         metrics = summarize_transcript_metrics(
             references=references,
             predictions=predictions,
+            lang_code=result.get("language"),
         )
         result.update(metrics)
 

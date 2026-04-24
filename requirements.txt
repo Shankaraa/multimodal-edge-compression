@@ -2,6 +2,7 @@ requests>=2.32.0
 soundfile>=0.12.1
 librosa>=0.11.0
 jiwer>=3.0.4
+num2words>=0.5.14
 datasets>=2.18.0,<4
 codecarbon>=2.3.5
 PyYAML>=6.0.2

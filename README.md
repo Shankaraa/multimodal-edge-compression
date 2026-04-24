@@ -42,12 +42,20 @@ comparison:
 So the first `fp8_round1` run is currently the best practical result we have: essentially flat
 quality with materially lower time and energy on this machine.
 
-The next low-risk submission stack is now explicit in the repo:
+Two later findings matter for how this result should be presented:
 
-- `configs/vllm/fp8_round1.yaml` now includes `kv_cache_dtype: fp8_e4m3`
-- the serving configs now set `enable_prefix_caching: true` explicitly
-- `scripts/warm_fleurs_prefix_cache.py` can warm the shared speech-to-text prefix cache before a
-  measured evaluation run
+- benchmark-aligned rescoring did not close the English gap to strong external baselines
+- public-wrapper checks on `open_asr_multilingual` made the English gap look slightly worse for
+  FP8, not better
+- prefix-cache validation on `/v1/audio/transcriptions` still showed `0.0%` hit rate, so prefix
+  caching is not part of the current submission claim
+
+That changes the right framing:
+
+- FP8 is still the strongest compressed Voxtral path in this repo
+- FP8 is clearly better than our BF16 Voxtral reference on efficiency
+- FP8 is credible and submission-worthy, but not honestly benchmark-leading against Whisper
+  large-v3 on the current benchmark-aligned view
 
 Important comparison note:
 
@@ -72,6 +80,13 @@ Why:
 - FP8 already has multilingual spot-check evidence
 - GPTQ is still a research branch and is not yet artifact-ready
 
+Important submission-scoping rule:
+
+- treat the validated FP8 English anchor as the core claim
+- treat benchmark-aligned rescoring as the honest external context
+- do not claim a realized round-one prefix-cache gain until the speech path shows non-zero cache
+  reuse in measured runs
+
 Alongside those two established tracks, the repo now has a low-risk decoder-skipping feasibility
 track:
 
@@ -87,6 +102,7 @@ Submission-facing docs:
 - [docs/submission_candidate_summary.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_candidate_summary.md)
 - [docs/submission_readiness_checklist.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_readiness_checklist.md)
 - [docs/submission_benchmark_table.md](/C:/Users/ASUS/Music/Fine_tuning/docs/submission_benchmark_table.md)
+- [docs/round1_submission_narrative.md](/C:/Users/ASUS/Music/Fine_tuning/docs/round1_submission_narrative.md)
 - [docs/global_benchmark_comparison.md](/C:/Users/ASUS/Music/Fine_tuning/docs/global_benchmark_comparison.md)
 
 ## Important Runtime Note
@@ -194,7 +210,6 @@ python scripts/serve_model.py models/voxtral-realtime --config configs/vllm/fp8_
 10. Run the current best apples-to-apples English comparison:
 
 ```powershell
-python scripts/warm_fleurs_prefix_cache.py --lang en_us --base-url http://localhost:8082/v1 --model voxtral-realtime --out reports/prefix_warmup_fp8_en_us.json
 python scripts/measure_energy.py --report reports/energy_fleurs_fp8_en_us_limit20_quietfix.json -- python scripts/evaluate_fleurs.py --lang en_us --limit 20 --base-url http://localhost:8082/v1 --model voxtral-realtime --out reports/fleurs_fp8_en_us_limit20_quietfix.json
 ```
 
@@ -203,10 +218,10 @@ The quiet-audio-aware BF16 comparison uses the same evaluation command, just poi
 
 Important runtime note:
 
-- the current WSL `vLLM` speech-to-text path supports prefix caching, but it does not expose
-  per-request `cache_salt` on `/v1/audio/transcriptions`
-- in practice that means warmup is process-local today: prime the server once, then run the
-  measured evaluation against the same live process
+- the current WSL `vLLM` speech-to-text path supports prefix caching in principle, but the
+  measured validation run on `/v1/audio/transcriptions` still showed `0.0%` hit rate
+- so `scripts/warm_fleurs_prefix_cache.py` is an investigation tool right now, not part of the
+  primary submission recipe
 
 ## Initial Experiment Order
 

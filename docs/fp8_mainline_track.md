@@ -31,7 +31,8 @@ research.
   - `max_model_len: 8192`
   - `gpu_memory_utilization: 0.85`
   - `kv_cache_dtype: fp8_e4m3`
-  - `enable_prefix_caching: true`
+  - `enable_prefix_caching: true` in config, but no realized evaluation gain is currently
+    validated on `/v1/audio/transcriptions`
 
 ## Evaluation State
 
@@ -79,6 +80,16 @@ All new comparisons should use this fixed evaluator, not the older reports.
   - `CER(no-space) = 10.00%`
   - `empty_prediction_count = 0`
 
+### Benchmark-aligned external position
+
+- Whisper large-v3 on the same local `en_us limit20` slice:
+  - `normalized WER = 4.32%`
+- FP8 on the same local `en_us limit20` slice:
+  - `normalized WER = 6.36%`
+- three-language `open_asr_like` macro average:
+  - FP8: `9.74%`
+  - Whisper: `8.22%`
+
 ## What These Results Mean
 
 - FP8 is already materially better than BF16 on efficiency.
@@ -86,6 +97,8 @@ All new comparisons should use this fixed evaluator, not the older reports.
   checks.
 - Japanese exposed a scoring caveat, not a serving failure.
 - FP8 is currently the best submission-grade path in the repo.
+- Strong external baselines still lead on benchmark-aligned quality, so the right submission
+  angle is efficient, reproducible compression rather than leaderboard leadership.
 
 Interpretation of the Japanese run:
 
@@ -149,23 +162,24 @@ As new evaluations are added, keep the following clean:
 
 ## Immediate Tasks For This Track
 
-1. Re-run the English submission slice with the updated FP8 KV cache config.
-2. Warm prefix cache before measured runs with `scripts/warm_fleurs_prefix_cache.py`.
-3. Add one more useful multilingual check if broader confidence is still needed.
-4. Build a simple benchmark matrix from the current BF16 and FP8 reports.
-5. Keep Japanese-like languages interpreted with CER-aware metrics instead of raw WER alone.
-6. Keep the daily log and README aligned with the latest validated checkpoint.
+1. Freeze the round-one candidate around the strongest validated FP8 English anchor.
+2. Keep submission-facing docs aligned with the benchmark-aligned external picture.
+3. Stop counting prefix-cache warmup as a round-one lever until speech-path cache reuse is proven.
+4. Keep Japanese-like languages interpreted with CER-aware metrics instead of raw WER alone.
+5. Treat manifest-style benchmark alignment as a post-submission or stretch task, not a blocker.
+6. Keep the daily log, status board, and README aligned with the validated candidate.
 
-## Prefix-Caching Constraint
+## Prefix-Caching Status
 
 The current WSL `vLLM` build does support prefix caching for the speech-to-text path, but the
 `/v1/audio/transcriptions` request model in this runtime does not expose `cache_salt`.
 
 Implication:
 
-- warmup is still worth doing
-- the warmup should happen against the same live server process that will handle the measured run
+- the latest same-process validation still reported `Prefix cache hit rate: 0.0%`
+- prefix-cache benefit is therefore not part of the defended round-one result
 - multi-tenant salted cache partitioning is not available on this path today
+- future work can keep investigating reuse, but the submission should not depend on it
 
 ## Success Criteria
 
@@ -174,7 +188,7 @@ This track is succeeding if:
 - FP8 keeps matching or nearly matching BF16 quality
 - FP8 keeps outperforming BF16 on efficiency
 - multilingual checks remain stable
-- the results are easy to explain and defend
+- the results are easy to explain and defend without relying on speculative runtime uplift
 
 ## Files That Matter Most
 

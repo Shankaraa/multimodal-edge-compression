@@ -11,6 +11,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 def parse_args() -> argparse.Namespace:
     from voxtral_project.api import DEFAULT_PROMPT
+    from voxtral_project.dataset_utils import FLEURS_DATASET_SOURCES
 
     parser = argparse.ArgumentParser(description="Evaluate WER on one or more FLEURS languages.")
     parser.add_argument(
@@ -26,6 +27,12 @@ def parse_args() -> argparse.Namespace:
         help="Language code such as en_us, fr_fr, hi_in, ja_jp.",
     )
     parser.add_argument("--limit", type=int, default=20, help="Samples per language.")
+    parser.add_argument(
+        "--dataset-source",
+        choices=FLEURS_DATASET_SOURCES,
+        default="google_fleurs",
+        help="Transcription dataset wrapper to evaluate against.",
+    )
     parser.add_argument("--base-url", default="http://localhost:8080/v1", help="Server base URL.")
     parser.add_argument("--model", default="voxtral-realtime", help="Model name exposed by the server.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Instruction prompt.")
@@ -59,6 +66,56 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=8.0,
         help="Maximum gain multiplier used for quiet-sample boosting.",
+    )
+    parser.add_argument(
+        "--gate-silence",
+        action="store_true",
+        help="Apply speech-aware silence gating before transcription.",
+    )
+    parser.add_argument(
+        "--gate-frame-ms",
+        type=float,
+        default=80.0,
+        help="Frame size used for speech-aware silence gating.",
+    )
+    parser.add_argument(
+        "--gate-peak-threshold",
+        type=float,
+        default=0.01,
+        help="Peak threshold used when classifying active audio for gating.",
+    )
+    parser.add_argument(
+        "--gate-rms-threshold",
+        type=float,
+        default=0.003,
+        help="RMS threshold used when classifying active audio for gating.",
+    )
+    parser.add_argument(
+        "--preserve-leading-silence-ms",
+        type=float,
+        default=160.0,
+        help="Silence preserved immediately before speech onset when gating is enabled.",
+    )
+    parser.add_argument(
+        "--preserve-trailing-silence-ms",
+        type=float,
+        default=160.0,
+        help="Silence preserved immediately after speech offset when gating is enabled.",
+    )
+    parser.add_argument(
+        "--compress-internal-silence-to-ms",
+        type=float,
+        default=None,
+        help=(
+            "If set, long internal silent spans are compressed to this duration instead of being "
+            "kept in full."
+        ),
+    )
+    parser.add_argument(
+        "--min-internal-silence-run-ms",
+        type=float,
+        default=640.0,
+        help="Only compress internal silent spans at least this long.",
     )
     parser.add_argument("--out", default=None, help="Optional JSON report path.")
     parser.add_argument(
@@ -98,13 +155,29 @@ def evaluate_language(
     quiet_audio_peak_threshold: float,
     quiet_audio_target_peak: float,
     max_audio_gain: float,
+    gate_silence: bool,
+    gate_frame_ms: float,
+    gate_peak_threshold: float,
+    gate_rms_threshold: float,
+    preserve_leading_silence_ms: float,
+    preserve_trailing_silence_ms: float,
+    compress_internal_silence_to_ms: float | None,
+    min_internal_silence_run_ms: float,
+    dataset_source: str,
     transcriber: object,
 ) -> dict:
     from voxtral_project.audio import prepare_audio_array_for_transcription
-    from voxtral_project.dataset_utils import load_fleurs_streaming
+    from voxtral_project.dataset_utils import (
+        get_sample_text,
+        load_transcription_dataset_streaming,
+    )
     from voxtral_project.text import summarize_transcript_metrics
 
-    fleurs = load_fleurs_streaming(lang_code=lang_code, split="test")
+    fleurs = load_transcription_dataset_streaming(
+        lang_code=lang_code,
+        split="test",
+        dataset_source=dataset_source,
+    )
 
     predictions: list[str] = []
     references: list[str] = []
@@ -121,13 +194,21 @@ def evaluate_language(
             quiet_peak_threshold=quiet_audio_peak_threshold,
             target_peak=quiet_audio_target_peak,
             max_gain=max_audio_gain,
+            gate_silence=gate_silence,
+            gate_frame_ms=gate_frame_ms,
+            gate_peak_threshold=gate_peak_threshold,
+            gate_rms_threshold=gate_rms_threshold,
+            preserve_leading_silence_ms=preserve_leading_silence_ms,
+            preserve_trailing_silence_ms=preserve_trailing_silence_ms,
+            compress_internal_silence_to_ms=compress_internal_silence_to_ms,
+            min_internal_silence_run_ms=min_internal_silence_run_ms,
         )
         prediction = transcriber.transcribe(
             audio_array=prepared_audio_array,
             sample_rate=sample["audio"]["sampling_rate"],
             lang_code=lang_code,
         )
-        reference = sample["transcription"]
+        reference = get_sample_text(sample)
         is_empty_prediction = not prediction.strip()
         if is_empty_prediction:
             empty_prediction_count += 1
@@ -146,6 +227,32 @@ def evaluate_language(
                 "audio_rms_after": round(float(audio_diagnostics["rms_after"]), 6),
                 "audio_gain_applied": round(float(audio_diagnostics["gain_applied"]), 6),
                 "quiet_audio_boosted": bool(audio_diagnostics["quiet_audio_boosted"]),
+                "speech_gating_applied": bool(audio_diagnostics["speech_gating_applied"]),
+                "speech_gating_changed_audio": bool(audio_diagnostics["speech_gating_changed_audio"]),
+                "speech_gating_duration_before_seconds": round(
+                    float(audio_diagnostics["speech_gating_duration_before_seconds"]), 6
+                ),
+                "speech_gating_duration_after_seconds": round(
+                    float(audio_diagnostics["speech_gating_duration_after_seconds"]), 6
+                ),
+                "speech_gating_seconds_removed": round(
+                    float(audio_diagnostics["speech_gating_seconds_removed"]), 6
+                ),
+                "speech_gating_fraction_removed": round(
+                    float(audio_diagnostics["speech_gating_fraction_removed"]), 6
+                ),
+                "speech_gating_leading_trimmed_seconds": round(
+                    float(audio_diagnostics["speech_gating_leading_trimmed_seconds"]), 6
+                ),
+                "speech_gating_trailing_trimmed_seconds": round(
+                    float(audio_diagnostics["speech_gating_trailing_trimmed_seconds"]), 6
+                ),
+                "speech_gating_internal_trimmed_seconds": round(
+                    float(audio_diagnostics["speech_gating_internal_trimmed_seconds"]), 6
+                ),
+                "speech_gating_internal_spans_compressed": int(
+                    audio_diagnostics["speech_gating_internal_spans_compressed"]
+                ),
                 "empty_prediction": is_empty_prediction,
             }
         )
@@ -153,9 +260,11 @@ def evaluate_language(
     metrics = summarize_transcript_metrics(
         references=references,
         predictions=predictions,
+        lang_code=lang_code,
     )
     return {
         "language": lang_code,
+        "dataset_source": dataset_source,
         "samples_evaluated": len(samples),
         "empty_prediction_count": empty_prediction_count,
         **metrics,
@@ -190,6 +299,15 @@ def main() -> int:
             quiet_audio_peak_threshold=args.quiet_audio_peak_threshold,
             quiet_audio_target_peak=args.quiet_audio_target_peak,
             max_audio_gain=args.max_audio_gain,
+            gate_silence=args.gate_silence,
+            gate_frame_ms=args.gate_frame_ms,
+            gate_peak_threshold=args.gate_peak_threshold,
+            gate_rms_threshold=args.gate_rms_threshold,
+            preserve_leading_silence_ms=args.preserve_leading_silence_ms,
+            preserve_trailing_silence_ms=args.preserve_trailing_silence_ms,
+            compress_internal_silence_to_ms=args.compress_internal_silence_to_ms,
+            min_internal_silence_run_ms=args.min_internal_silence_run_ms,
+            dataset_source=args.dataset_source,
             transcriber=transcriber,
         )
         for lang_code in args.lang
@@ -200,6 +318,16 @@ def main() -> int:
         "backend": args.backend,
         "backend_details": transcriber.describe(),
         "limit_per_language": args.limit,
+        "speech_gating": {
+            "enabled": args.gate_silence,
+            "frame_ms": args.gate_frame_ms,
+            "peak_threshold": args.gate_peak_threshold,
+            "rms_threshold": args.gate_rms_threshold,
+            "preserve_leading_silence_ms": args.preserve_leading_silence_ms,
+            "preserve_trailing_silence_ms": args.preserve_trailing_silence_ms,
+            "compress_internal_silence_to_ms": args.compress_internal_silence_to_ms,
+            "min_internal_silence_run_ms": args.min_internal_silence_run_ms,
+        },
         "results": results,
     }
 
@@ -209,6 +337,7 @@ def main() -> int:
             f"({result['wer_percent']:.2f}%), CER={result['cer_percent']:.2f}%, "
             f"CER(no-space)={result['cer_no_whitespace_percent']:.2f}%, "
             f"norm WER={result['wer_normalized_percent']:.2f}%, "
+            f"open-asr-like WER={result['metric_profiles']['open_asr_like']['wer_percent']:.2f}%, "
             f"norm CER={result['cer_normalized_percent']:.2f}% "
             f"over {result['samples_evaluated']} samples with "
             f"{result['empty_prediction_count']} empty predictions"
