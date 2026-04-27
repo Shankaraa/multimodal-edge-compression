@@ -23,154 +23,7 @@ def _as_mono_float32_audio(audio_array: Any) -> Any:
     prepared = np.asarray(audio_array, dtype=np.float32)
     if prepared.ndim > 1:
         prepared = np.squeeze(prepared)
-    if prepared.ndim > 1:
-        prepared = np.mean(prepared, axis=-1, dtype=np.float32)
     return prepared
-
-
-def _empty_vad_trim_diagnostics(
-    audio_array: Any,
-    sample_rate: int,
-    *,
-    applied: bool,
-    aggressiveness: int,
-    padding_ms: float,
-    frame_ms: float = 30.0,
-) -> dict[str, float | int | bool]:
-    duration_seconds = float(audio_array.size / sample_rate) if sample_rate and audio_array.size else 0.0
-    return {
-        "vad_trim_applied": applied,
-        "vad_trim_changed_audio": False,
-        "vad_trim_duration_before_seconds": duration_seconds,
-        "vad_trim_duration_after_seconds": duration_seconds,
-        "vad_trim_seconds_removed": 0.0,
-        "vad_trim_fraction_removed": 0.0,
-        "vad_trim_leading_trimmed_seconds": 0.0,
-        "vad_trim_trailing_trimmed_seconds": 0.0,
-        "vad_trim_aggressiveness": int(aggressiveness),
-        "vad_trim_padding_ms": float(padding_ms),
-        "vad_trim_frame_ms": float(frame_ms),
-        "vad_trim_frame_count": 0,
-        "vad_trim_voiced_frame_count": 0,
-    }
-
-
-def _trim_silence_vad_with_diagnostics(
-    audio_array: Any,
-    sample_rate: int,
-    *,
-    aggressiveness: int = 1,
-    padding_ms: float = 200.0,
-) -> tuple[Any, dict[str, float | int | bool]]:
-    import librosa
-    import numpy as np
-    import webrtcvad
-
-    if aggressiveness < 0 or aggressiveness > 3:
-        raise ValueError("webrtcvad aggressiveness must be between 0 and 3.")
-
-    prepared = _as_mono_float32_audio(audio_array)
-    diagnostics = _empty_vad_trim_diagnostics(
-        prepared,
-        sample_rate,
-        applied=True,
-        aggressiveness=aggressiveness,
-        padding_ms=padding_ms,
-    )
-    if prepared.size == 0 or sample_rate <= 0:
-        return prepared, diagnostics
-
-    vad_sample_rate = 16_000
-    vad_audio = prepared
-    if sample_rate != vad_sample_rate:
-        vad_audio = librosa.resample(
-            prepared.astype(np.float32, copy=False),
-            orig_sr=sample_rate,
-            target_sr=vad_sample_rate,
-        )
-    vad_audio = _as_mono_float32_audio(vad_audio)
-    if vad_audio.size == 0:
-        return prepared, diagnostics
-
-    frame_ms = 30.0
-    frame_samples = int(vad_sample_rate * frame_ms / 1000.0)
-    frame_count = int(math.ceil(vad_audio.size / frame_samples))
-    padded_sample_count = frame_count * frame_samples
-    pcm_float = np.clip(vad_audio, -1.0, 1.0)
-    pcm_int16 = (pcm_float * 32767.0).astype("<i2", copy=False)
-    if padded_sample_count > pcm_int16.size:
-        pcm_int16 = np.pad(pcm_int16, (0, padded_sample_count - pcm_int16.size))
-
-    vad = webrtcvad.Vad(int(aggressiveness))
-    voiced_frames: list[int] = []
-    for frame_index in range(frame_count):
-        start = frame_index * frame_samples
-        end = start + frame_samples
-        if vad.is_speech(pcm_int16[start:end].tobytes(), vad_sample_rate):
-            voiced_frames.append(frame_index)
-
-    diagnostics.update(
-        {
-            "vad_trim_frame_count": frame_count,
-            "vad_trim_voiced_frame_count": len(voiced_frames),
-        }
-    )
-    if not voiced_frames:
-        # Conservative fallback: never trim clips that VAD classifies as fully silent.
-        return prepared, diagnostics
-
-    padding_samples = int(round(vad_sample_rate * (padding_ms / 1000.0)))
-    vad_start = max(0, voiced_frames[0] * frame_samples - padding_samples)
-    vad_end = min(
-        int(vad_audio.size),
-        (voiced_frames[-1] + 1) * frame_samples + padding_samples,
-    )
-    start_seconds = vad_start / vad_sample_rate
-    end_seconds = vad_end / vad_sample_rate
-    original_start = max(0, min(int(math.floor(start_seconds * sample_rate)), int(prepared.size)))
-    original_end = max(0, min(int(math.ceil(end_seconds * sample_rate)), int(prepared.size)))
-    if original_end <= original_start:
-        return prepared, diagnostics
-
-    trimmed = prepared[original_start:original_end]
-    removed_samples = max(0, int(prepared.size) - int(trimmed.size))
-    leading_removed_samples = original_start
-    trailing_removed_samples = max(0, int(prepared.size) - original_end)
-
-    diagnostics.update(
-        {
-            "vad_trim_changed_audio": bool(removed_samples > 0),
-            "vad_trim_duration_after_seconds": float(trimmed.size / sample_rate),
-            "vad_trim_seconds_removed": float(removed_samples / sample_rate),
-            "vad_trim_fraction_removed": (
-                float(removed_samples / prepared.size) if prepared.size else 0.0
-            ),
-            "vad_trim_leading_trimmed_seconds": float(leading_removed_samples / sample_rate),
-            "vad_trim_trailing_trimmed_seconds": float(trailing_removed_samples / sample_rate),
-        }
-    )
-    return trimmed, diagnostics
-
-
-def trim_silence_vad(
-    audio: Any,
-    sr: int,
-    aggressiveness: int = 1,
-    padding_ms: float = 200.0,
-) -> Any:
-    """Strip leading/trailing silence using webrtcvad.
-
-    Conservative defaults: aggressiveness=1 (least aggressive), padding_ms=200
-    (keep 200ms of silence on each end to avoid clipping word onsets).
-    """
-
-    trimmed, _ = _trim_silence_vad_with_diagnostics(
-        audio,
-        sr,
-        aggressiveness=aggressiveness,
-        padding_ms=padding_ms,
-    )
-    return trimmed
 
 
 def _frame_activity_mask(
@@ -378,9 +231,6 @@ def prepare_audio_array_for_transcription(
     target_peak: float = 0.02,
     max_gain: float = 8.0,
     gate_silence: bool = False,
-    vad_trim: bool = False,
-    vad_aggressiveness: int = 1,
-    vad_padding_ms: float = 200.0,
     gate_frame_ms: float = 80.0,
     gate_peak_threshold: float = 0.01,
     gate_rms_threshold: float = 0.003,
@@ -388,7 +238,7 @@ def prepare_audio_array_for_transcription(
     preserve_trailing_silence_ms: float = 160.0,
     compress_internal_silence_to_ms: float | None = None,
     min_internal_silence_run_ms: float = 640.0,
-) -> tuple[Any, dict[str, float | bool | int | None]]:
+) -> tuple[Any, dict[str, float | bool]]:
     import numpy as np
 
     prepared = _as_mono_float32_audio(audio_array)
@@ -402,19 +252,6 @@ def prepare_audio_array_for_transcription(
             "peak_abs_after": 0.0,
             "gain_applied": 1.0,
             "quiet_audio_boosted": False,
-            "vad_trim_applied": bool(vad_trim),
-            "vad_trim_changed_audio": False,
-            "vad_trim_duration_before_seconds": 0.0,
-            "vad_trim_duration_after_seconds": 0.0,
-            "vad_trim_seconds_removed": 0.0,
-            "vad_trim_fraction_removed": 0.0,
-            "vad_trim_leading_trimmed_seconds": 0.0,
-            "vad_trim_trailing_trimmed_seconds": 0.0,
-            "vad_trim_aggressiveness": int(vad_aggressiveness),
-            "vad_trim_padding_ms": float(vad_padding_ms),
-            "vad_trim_frame_ms": 30.0,
-            "vad_trim_frame_count": 0,
-            "vad_trim_voiced_frame_count": 0,
             "speech_gating_applied": bool(gate_silence),
             "speech_gating_changed_audio": False,
             "speech_gating_duration_before_seconds": 0.0,
@@ -440,24 +277,6 @@ def prepare_audio_array_for_transcription(
             prepared = np.clip(prepared * gain, -1.0, 1.0)
             boosted = True
 
-    vad_diagnostics: dict[str, float | int | bool]
-    if vad_trim:
-        prepared, vad_diagnostics = _trim_silence_vad_with_diagnostics(
-            prepared,
-            sample_rate,
-            aggressiveness=vad_aggressiveness,
-            padding_ms=vad_padding_ms,
-        )
-    else:
-        vad_diagnostics = _empty_vad_trim_diagnostics(
-            prepared,
-            sample_rate,
-            applied=False,
-            aggressiveness=vad_aggressiveness,
-            padding_ms=vad_padding_ms,
-        )
-
-    post_vad_duration_seconds = float(prepared.size / sample_rate) if sample_rate else 0.0
     gating_diagnostics: dict[str, float | int | bool | None]
     if gate_silence:
         prepared, gating_diagnostics = gate_audio_by_activity(
@@ -475,8 +294,8 @@ def prepare_audio_array_for_transcription(
         gating_diagnostics = {
             "speech_gating_applied": False,
             "speech_gating_changed_audio": False,
-            "speech_gating_duration_before_seconds": post_vad_duration_seconds,
-            "speech_gating_duration_after_seconds": post_vad_duration_seconds,
+            "speech_gating_duration_before_seconds": duration_seconds,
+            "speech_gating_duration_after_seconds": duration_seconds,
             "speech_gating_seconds_removed": 0.0,
             "speech_gating_fraction_removed": 0.0,
             "speech_gating_leading_trimmed_seconds": 0.0,
@@ -508,7 +327,6 @@ def prepare_audio_array_for_transcription(
         "gain_applied": gain,
         "quiet_audio_boosted": boosted,
     }
-    diagnostics.update(vad_diagnostics)
     diagnostics.update(gating_diagnostics)
     return prepared, diagnostics
 

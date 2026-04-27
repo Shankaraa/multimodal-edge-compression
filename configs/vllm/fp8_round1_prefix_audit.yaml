@@ -10,4 +10,3 @@ enable_prefix_caching: true
 compilation_config:
   cudagraph_mode: PIECEWISE
 enforce_eager: false
-disable_log_stats: true

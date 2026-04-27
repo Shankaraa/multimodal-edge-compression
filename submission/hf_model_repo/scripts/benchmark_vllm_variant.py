@@ -61,24 +61,6 @@ def parse_args() -> argparse.Namespace:
         help="Apply speech-aware silence gating during the benchmark evaluation.",
     )
     parser.add_argument(
-        "--vad-trim",
-        action="store_true",
-        help="Strip leading/trailing silence with conservative WebRTC VAD during the benchmark.",
-    )
-    parser.add_argument(
-        "--vad-aggressiveness",
-        type=int,
-        choices=(0, 1, 2, 3),
-        default=1,
-        help="WebRTC VAD aggressiveness for --vad-trim.",
-    )
-    parser.add_argument(
-        "--vad-padding-ms",
-        type=float,
-        default=200.0,
-        help="Silence preserved before first voiced frame and after last voiced frame.",
-    )
-    parser.add_argument(
         "--gate-frame-ms",
         type=float,
         default=80.0,
@@ -174,9 +156,6 @@ def benchmark_first_request(
     language_hint_mode: str,
     temperature: float | None,
     gate_silence: bool,
-    vad_trim: bool,
-    vad_aggressiveness: int,
-    vad_padding_ms: float,
     gate_frame_ms: float,
     gate_peak_threshold: float,
     gate_rms_threshold: float,
@@ -200,9 +179,6 @@ def benchmark_first_request(
         sample["audio"]["array"],
         sample["audio"]["sampling_rate"],
         gate_silence=gate_silence,
-        vad_trim=vad_trim,
-        vad_aggressiveness=vad_aggressiveness,
-        vad_padding_ms=vad_padding_ms,
         gate_frame_ms=gate_frame_ms,
         gate_peak_threshold=gate_peak_threshold,
         gate_rms_threshold=gate_rms_threshold,
@@ -240,13 +216,6 @@ def benchmark_first_request(
         "temperature": temperature,
         "latency_seconds": elapsed,
         "audio_duration_seconds": float(audio_diagnostics["duration_seconds"]),
-        "vad_trim_applied": bool(audio_diagnostics["vad_trim_applied"]),
-        "vad_trim_changed_audio": bool(audio_diagnostics["vad_trim_changed_audio"]),
-        "vad_trim_seconds_removed": float(audio_diagnostics["vad_trim_seconds_removed"]),
-        "vad_trim_fraction_removed": float(audio_diagnostics["vad_trim_fraction_removed"]),
-        "vad_trim_duration_after_seconds": float(
-            audio_diagnostics["vad_trim_duration_after_seconds"]
-        ),
         "gated_audio_duration_seconds": float(audio_diagnostics["speech_gating_duration_after_seconds"]),
         "speech_gating_seconds_removed": float(audio_diagnostics["speech_gating_seconds_removed"]),
         "speech_gating_fraction_removed": float(audio_diagnostics["speech_gating_fraction_removed"]),
@@ -261,7 +230,6 @@ def run_eval(
     *,
     base_url: str,
     model: str,
-    model_label: str,
     lang: str,
     limit: int,
     dataset_source: str,
@@ -269,9 +237,6 @@ def run_eval(
     language_hint_mode: str,
     temperature: float | None,
     gate_silence: bool,
-    vad_trim: bool,
-    vad_aggressiveness: int,
-    vad_padding_ms: float,
     gate_frame_ms: float,
     gate_peak_threshold: float,
     gate_rms_threshold: float,
@@ -281,10 +246,6 @@ def run_eval(
     min_internal_silence_run_ms: float,
     eval_report: Path,
     energy_report: Path,
-    config_hash: str,
-    harness_git_sha: str | None,
-    normalization_version_hash: str,
-    server_log_path: Path,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     command = [
         sys.executable,
@@ -304,14 +265,6 @@ def run_eval(
         base_url,
         "--model",
         model,
-        "--model-label",
-        model_label,
-        "--config-hash",
-        config_hash,
-        "--normalization-version",
-        normalization_version_hash,
-        "--server-log-path",
-        str(server_log_path),
         "--prompt",
         prompt,
         "--language-hint-mode",
@@ -319,20 +272,8 @@ def run_eval(
         "--out",
         str(eval_report),
     ]
-    if harness_git_sha:
-        command.extend(["--harness-git-sha", harness_git_sha])
     if temperature is not None:
         command.extend(["--temperature", str(temperature)])
-    if vad_trim:
-        command.extend(
-            [
-                "--vad-trim",
-                "--vad-aggressiveness",
-                str(vad_aggressiveness),
-                "--vad-padding-ms",
-                str(vad_padding_ms),
-            ]
-        )
     if gate_silence:
         command.extend(
             [
@@ -362,22 +303,6 @@ def run_eval(
 
     eval_payload = json.loads(eval_report.read_text(encoding="utf-8"))
     energy_payload = json.loads(energy_report.read_text(encoding="utf-8"))
-    from voxtral_project.audio import write_json
-    from voxtral_project.reporting import attach_measurement_contract
-
-    attach_measurement_contract(
-        eval_payload,
-        limit=limit,
-        model_label=model_label,
-        config_hash=config_hash,
-        harness_git_sha=harness_git_sha,
-        normalization_version_hash=normalization_version_hash,
-        server_log_path=str(server_log_path),
-        elapsed_seconds=energy_payload.get("elapsed_seconds"),
-        energy_joules=energy_payload.get("energy_joules"),
-        emissions_kg=energy_payload.get("emissions_kg"),
-    )
-    write_json(eval_report, eval_payload)
     return eval_payload, energy_payload
 
 
@@ -391,9 +316,6 @@ def run_warmup(
     language_hint_mode: str,
     temperature: float | None,
     gate_silence: bool,
-    vad_trim: bool,
-    vad_aggressiveness: int,
-    vad_padding_ms: float,
     gate_frame_ms: float,
     gate_peak_threshold: float,
     gate_rms_threshold: float,
@@ -425,16 +347,6 @@ def run_warmup(
     ]
     if temperature is not None:
         command.extend(["--temperature", str(temperature)])
-    if vad_trim:
-        command.extend(
-            [
-                "--vad-trim",
-                "--vad-aggressiveness",
-                str(vad_aggressiveness),
-                "--vad-padding-ms",
-                str(vad_padding_ms),
-            ]
-        )
     if gate_silence:
         command.extend(
             [
@@ -486,12 +398,7 @@ def build_summary(
     open_asr_like_profile = result.get("metric_profiles", {}).get("open_asr_like", {})
     total_audio_seconds = sum(sample["audio_duration_seconds"] for sample in result["samples"])
     elapsed_eval_seconds = float(energy_payload["elapsed_seconds"])
-    measurement_summary = (
-        eval_payload.get("measurement_summaries", [{}])[0]
-        if eval_payload.get("measurement_summaries")
-        else {}
-    )
-    summary = {
+    return {
         "label": label,
         "model_path": model_path,
         "config_path": config_path,
@@ -502,15 +409,12 @@ def build_summary(
         "prompt": first_request.get("prompt"),
         "language_hint_mode": first_request.get("language_hint_mode"),
         "temperature": first_request.get("temperature"),
-        "vad_trim": eval_payload.get("vad_trim"),
         "speech_gating": eval_payload.get("speech_gating"),
         "startup_seconds": startup_seconds,
         "gpu_snapshot": gpu_snapshot,
         "first_request": first_request,
         "warmup": {
             "script": "scripts/warm_fleurs_prefix_cache.py",
-            "ran_before_first_request": True,
-            "ran_before_timed_eval": True,
             "report_path": str(warmup_report),
             "sample_id": warmup_payload.get("sample_id"),
             "language": warmup_payload.get("language"),
@@ -551,10 +455,6 @@ def build_summary(
         },
         "log_path": str(log_path),
     }
-    if measurement_summary:
-        summary["measurement_summary"] = measurement_summary
-        summary.update(measurement_summary)
-    return summary
 
 
 def build_failed_summary(
@@ -589,8 +489,6 @@ def build_failed_summary(
         "first_request": first_request,
         "warmup": {
             "script": "scripts/warm_fleurs_prefix_cache.py",
-            "ran_before_first_request": True,
-            "ran_before_timed_eval": True,
             "report_exists": warmup_report.exists(),
             "report_path": str(warmup_report),
         },
@@ -608,7 +506,6 @@ def build_failed_summary(
 def main() -> int:
     from voxtral_project.api import wait_for_server_ready
     from voxtral_project.audio import write_json
-    from voxtral_project.reporting import get_git_head_sha, normalization_version
 
     args = parse_args()
 
@@ -617,19 +514,15 @@ def main() -> int:
     log_dir = PROJECT_ROOT / "logs"
     report_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{args.label}_benchmark_server.log"
+    eval_report = report_dir / f"fleurs_{args.label}_{args.lang}_limit{args.limit}.json"
+    energy_report = report_dir / f"energy_fleurs_{args.label}_{args.lang}_limit{args.limit}.json"
+    summary_report = report_dir / f"benchmark_{args.label}_{args.lang}_limit{args.limit}.json"
+    warmup_report = report_dir / f"warmup_{args.label}_{args.lang}_limit{args.limit}.json"
     config_path = Path(args.config)
     if not config_path.is_absolute():
         config_path = PROJECT_ROOT / config_path
     config_sha256 = file_sha256(config_path)
-    config_hash_tag = f"cfg{config_sha256}"
-    harness_git_sha = get_git_head_sha(PROJECT_ROOT)
-    normalization_version_hash = normalization_version(PROJECT_ROOT)
-
-    log_path = log_dir / f"{args.label}_{config_hash_tag}_benchmark_server.log"
-    eval_report = report_dir / f"fleurs_{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}.json"
-    energy_report = report_dir / f"energy_fleurs_{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}.json"
-    summary_report = report_dir / f"benchmark_{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}.json"
-    warmup_report = report_dir / f"warmup_{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}.json"
 
     start_time = time.perf_counter()
     with log_path.open("w", encoding="utf-8") as log_file:
@@ -669,27 +562,6 @@ def main() -> int:
             startup_seconds = time.perf_counter() - start_time
             served_model = models[0]["id"] if models else args.label
             gpu_snapshot = get_gpu_snapshot()
-            warmup_payload = run_warmup(
-                base_url=base_url,
-                model=served_model,
-                lang=args.lang,
-                dataset_source=args.dataset_source,
-                prompt=args.prompt,
-                language_hint_mode=args.language_hint_mode,
-                temperature=args.temperature,
-                gate_silence=args.gate_silence,
-                vad_trim=args.vad_trim,
-                vad_aggressiveness=args.vad_aggressiveness,
-                vad_padding_ms=args.vad_padding_ms,
-                gate_frame_ms=args.gate_frame_ms,
-                gate_peak_threshold=args.gate_peak_threshold,
-                gate_rms_threshold=args.gate_rms_threshold,
-                preserve_leading_silence_ms=args.preserve_leading_silence_ms,
-                preserve_trailing_silence_ms=args.preserve_trailing_silence_ms,
-                compress_internal_silence_to_ms=args.compress_internal_silence_to_ms,
-                min_internal_silence_run_ms=args.min_internal_silence_run_ms,
-                warmup_report=warmup_report,
-            )
             first_request = benchmark_first_request(
                 base_url=f"http://127.0.0.1:{args.port}",
                 model=served_model,
@@ -699,9 +571,6 @@ def main() -> int:
                 language_hint_mode=args.language_hint_mode,
                 temperature=args.temperature,
                 gate_silence=args.gate_silence,
-                vad_trim=args.vad_trim,
-                vad_aggressiveness=args.vad_aggressiveness,
-                vad_padding_ms=args.vad_padding_ms,
                 gate_frame_ms=args.gate_frame_ms,
                 gate_peak_threshold=args.gate_peak_threshold,
                 gate_rms_threshold=args.gate_rms_threshold,
@@ -710,11 +579,28 @@ def main() -> int:
                 compress_internal_silence_to_ms=args.compress_internal_silence_to_ms,
                 min_internal_silence_run_ms=args.min_internal_silence_run_ms,
             )
+            warmup_payload = run_warmup(
+                base_url=base_url,
+                model=served_model,
+                lang=args.lang,
+                dataset_source=args.dataset_source,
+                prompt=args.prompt,
+                language_hint_mode=args.language_hint_mode,
+                temperature=args.temperature,
+                gate_silence=args.gate_silence,
+                gate_frame_ms=args.gate_frame_ms,
+                gate_peak_threshold=args.gate_peak_threshold,
+                gate_rms_threshold=args.gate_rms_threshold,
+                preserve_leading_silence_ms=args.preserve_leading_silence_ms,
+                preserve_trailing_silence_ms=args.preserve_trailing_silence_ms,
+                compress_internal_silence_to_ms=args.compress_internal_silence_to_ms,
+                min_internal_silence_run_ms=args.min_internal_silence_run_ms,
+                warmup_report=warmup_report,
+            )
             try:
                 eval_payload, energy_payload = run_eval(
                     base_url=base_url,
                     model=served_model,
-                    model_label=args.label,
                     lang=args.lang,
                     limit=args.limit,
                     dataset_source=args.dataset_source,
@@ -722,9 +608,6 @@ def main() -> int:
                     language_hint_mode=args.language_hint_mode,
                     temperature=args.temperature,
                     gate_silence=args.gate_silence,
-                    vad_trim=args.vad_trim,
-                    vad_aggressiveness=args.vad_aggressiveness,
-                    vad_padding_ms=args.vad_padding_ms,
                     gate_frame_ms=args.gate_frame_ms,
                     gate_peak_threshold=args.gate_peak_threshold,
                     gate_rms_threshold=args.gate_rms_threshold,
@@ -734,10 +617,6 @@ def main() -> int:
                     min_internal_silence_run_ms=args.min_internal_silence_run_ms,
                     eval_report=eval_report,
                     energy_report=energy_report,
-                    config_hash=config_sha256,
-                    harness_git_sha=harness_git_sha,
-                    normalization_version_hash=normalization_version_hash,
-                    server_log_path=log_path,
                 )
             except subprocess.CalledProcessError as exc:
                 summary = build_failed_summary(

@@ -1,0 +1,32 @@
+{
+  "avg_tokens": 91.55,
+  "max_tokens": 403,
+  "min_records_per_language": 19,
+  "min_tokens": 12,
+  "records_by_kind": {
+    "medium": 130,
+    "short": 126
+  },
+  "records_by_language": {
+    "AR": 20,
+    "DE": 20,
+    "EN": 20,
+    "ES": 20,
+    "FR": 20,
+    "HI": 20,
+    "IT": 19,
+    "JA": 19,
+    "KO": 19,
+    "NL": 19,
+    "PT": 20,
+    "RU": 20,
+    "ZH": 20
+  },
+  "records_loaded": 256,
+  "tokenization_errors": 0,
+  "tokenizer_class": "MistralCommonBackend",
+  "tokenizer_module": "transformers.tokenization_mistral_common",
+  "tokenizer_source": "models/voxtral-realtime",
+  "validated_at": "2026-04-24T13:14:00Z",
+  "vocab_size": 131072
+}

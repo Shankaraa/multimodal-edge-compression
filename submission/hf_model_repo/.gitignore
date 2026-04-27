@@ -1,0 +1,6 @@
+.venv/
+logs/
+models/
+__pycache__/
+*.pyc
+emissions.csv

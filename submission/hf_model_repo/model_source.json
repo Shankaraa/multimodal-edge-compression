@@ -1,0 +1,20 @@
+{
+  "submission_type": "base_checkpoint_served_with_vllm_runtime_fp8",
+  "base_model_id": "mistralai/Voxtral-Mini-4B-Realtime-2602",
+  "base_model_revision": "2769294da9567371363522aac9bbcfdd19447add",
+  "local_model_dir_default": "models/voxtral-realtime",
+  "serving_config": "vllm_config.yaml",
+  "served_model_name": "voxtral-realtime",
+  "artifact_policy": "No static quantized checkpoint is required for the defended result. The base BF16 Voxtral checkpoint is downloaded from Hugging Face and served with vLLM runtime FP8 quantization plus FP8 E4M3 KV cache exactly as pinned in vllm_config.yaml.",
+  "defended_runtime_claims": [
+    "vLLM runtime quantization: fp8",
+    "KV cache dtype: fp8_e4m3",
+    "max_model_len: 8192",
+    "gpu_memory_utilization: 0.85",
+    "attention_backend: TRITON_ATTN",
+    "compilation_config.cudagraph_mode: PIECEWISE"
+  ],
+  "not_defended_as_performance_claims": [
+    "prefix-cache speedup; the config enables prefix caching, but measured speech-path hit rate stayed at 0.0%"
+  ]
+}

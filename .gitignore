@@ -36,6 +36,7 @@ emissions.csv
 
 .env
 .envrc
+config/secret_key
 .DS_Store
 .idea/
 .vscode/
