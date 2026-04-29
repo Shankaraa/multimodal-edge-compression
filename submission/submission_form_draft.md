@@ -1,19 +1,15 @@
-# Submission Form Draft
+# Track A Submission Form Draft
 
 ## Submission Name
 
-Voxtral Mini Realtime Runtime-FP8
-
-## Track
-
-Fill with final organizer track: Track A or Track B.
+Track A Voxtral Mini Realtime Runtime-FP8
 
 ## Hugging Face Model Repo
 
 Fill after upload:
 
 ```text
-https://huggingface.co/<org-or-user>/<repo-name>
+https://huggingface.co/Shankara-A-S/voxtral-mini-realtime-fp8-runtime
 ```
 
 Upload source:
@@ -29,85 +25,68 @@ mistralai/Voxtral-Mini-4B-Realtime-2602
 revision 2769294da9567371363522aac9bbcfdd19447add
 ```
 
-## Compression Method
+## Final Serving Config
 
-The submitted artifact uses the base Voxtral Mini Realtime checkpoint served through vLLM runtime
-FP8 quantization. The pinned serving config is `vllm_config.yaml` in the uploaded repo:
-
-```yaml
-quantization: fp8
-kv_cache_dtype: fp8_e4m3
-attention_backend: TRITON_ATTN
-max_model_len: 8192
-gpu_memory_utilization: 0.85
-compilation_config:
-  cudagraph_mode: PIECEWISE
+```text
+vllm_config.yaml
+packaged model field: .
+benchmark runtime fields sha256: 4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4
+organizer entrypoint: vllm serve --config vllm_config.yaml
 ```
 
-This is a base-checkpoint-plus-runtime-config submission, not a static quantized safetensors
-checkpoint. Prefix caching is enabled in the exact config but is not claimed as a performance win,
-because the measured speech path did not show positive prefix-cache reuse.
+## Final Client Policy
+
+```text
+--language-hint-mode fleurs_primary --empty-retry-count 2
+VAD disabled
+dataset source: google_fleurs
+```
 
 ## Reproduction Command
 
 ```bash
-git clone https://huggingface.co/<org-or-user>/<repo-name>
-cd <repo-name>
+git clone https://huggingface.co/Shankara-A-S/voxtral-mini-realtime-fp8-runtime
+cd voxtral-mini-realtime-fp8-runtime
 bash reproduce.sh
 ```
 
-The script installs dependencies, downloads the pinned base model revision, starts vLLM, evaluates
-FLEURS, measures energy, and writes fresh reports under `reports/`.
-
 ## Primary Claim
 
-On the submitted local English FLEURS 20-sample slice, runtime FP8 preserved normalized WER versus
-the BF16 Voxtral reference while reducing wall time and measured energy.
+Track A uses base Voxtral served through vLLM runtime FP8. Across the four canonical FLEURS slices,
+the submitted FP8 policy used `345,734.14 J` versus `474,614.96 J` for the same-policy BF16
+reference, a measured local energy reduction of `27.15%`.
 
-| Run | Language | Samples | Raw WER | Norm WER | Empty preds | Time | Energy | Evidence |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| BF16 Voxtral reference | `en_us` | 20 | 22.20% | 6.36% | 0 | 46.26 s | 8112.90 J | `reports/fleurs_bf16_en_us_limit20_quietfix.json`, `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json` |
-| FP8 Voxtral candidate | `en_us` | 20 | 21.97% | 6.36% | 0 | 35.21 s | 4952.89 J | `reports/fleurs_fp8_en_us_limit20_quietfix.json`, `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json` |
+The final FP8 run cleared every gate with `0` empty predictions and `0` retry requests.
 
-Derived from the report JSON, FP8 is 23.89% faster and uses 38.95% less measured energy than the
-BF16 Voxtral reference on this slice.
+| Slice | Limit | Gate metric | Value | CI low | CI high | Ceiling | Margin | Energy |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `en_us` | 500 | normalized WER | 6.1456% | 5.4996% | 6.7794% | 7.56% | 1.4144 pp | 189,442.10 J |
+| `fr_fr` | 100 | normalized WER | 8.4548% | 6.7809% | 10.2486% | 10.30% | 1.8452 pp | 37,882.64 J |
+| `hi_in` | 100 | normalized WER | 25.4309% | 22.4806% | 28.6336% | 32.84% | 7.4091 pp | 44,502.93 J |
+| `ja_jp` | 100 | no-space CER | 7.0919% | 5.5534% | 8.6900% | 11.08% | 3.9881 pp | 73,906.48 J |
 
-## Multilingual Checks
-
-| Language | Samples | Quality read | Empty preds | Evidence |
-| --- | ---: | --- | ---: | --- |
-| `fr_fr` | 5 | raw WER 23.18%, normalized WER 10.56% | 0 | `reports/fleurs_fp8_fr_fr_limit5_quietfix.json`, `reports/energy_fleurs_fp8_fr_fr_limit5_quietfix.json` |
-| `hi_in` | 5 | raw WER 26.83%, normalized WER 23.58% | 0 | `reports/fleurs_fp8_hi_in_limit5_quietfix.json`, `reports/energy_fleurs_fp8_hi_in_limit5_quietfix.json` |
-| `ja_jp` | 5 | CER 10.42%, no-whitespace CER 10.00% | 0 | `reports/fleurs_fp8_ja_jp_limit5_quietfix_v2.json`, `reports/energy_fleurs_fp8_ja_jp_limit5_quietfix_v2.json` |
-
-Japanese word-level WER is not used as the defended quality metric because segmentation dominates
-that read; the report includes it for transparency.
-
-## External Context
-
-Whisper large-v3 is included only as an external anchor, not as the submitted model. On the same
-English 20-sample slice it produced raw WER 20.59%, normalized WER 4.32%, 34.77 seconds, and
-3258.57 joules. Evidence:
+Every number above is cross-referenced in:
 
 ```text
-reports/fleurs_whisper_large_v3_en_us_limit20.json
-reports/energy_fleurs_whisper_large_v3_en_us_limit20.json
+reports/claimed_results.json
 ```
 
-## Hardware Used For Submitted Numbers
+## Evidence Files
 
 ```text
-NVIDIA GeForce RTX 5080
-16 GB VRAM
-Linux/WSL2 runtime
+reports/tracka_fp8_handoff_2026-04-28.md
+reports/benchmark_fp8_tracka_novad_hint_retry2_en500_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_en_us_limit500.json
+reports/benchmark_fp8_tracka_novad_hint_retry2_fr100_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_fr_fr_limit100.json
+reports/benchmark_fp8_tracka_novad_hint_retry2_hi100_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_hi_in_limit100.json
+reports/benchmark_fp8_tracka_novad_hint_retry2_ja100_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_ja_jp_limit100.json
 ```
 
-The later runtime validation report is
-`reports/benchmark_fp8_gate_control_warm_en20_en_us_limit20.json`.
+## Required Caveats
 
-## Known Caveats
-
-- The defended claim is efficiency versus BF16 Voxtral, not beating every external ASR baseline.
-- GPTQ/static quantized safetensors branches are not part of this submission.
-- Prefix caching is not claimed as a realized speedup.
-- Full clean-env reproduction still needs to be run before final form submission.
+- Portability: the energy ratio is measured locally and may move on organizer hardware.
+- Organizer baseline rule: local same-policy BF16 gates are internal; organizer baseline rules
+  supersede them if different.
+- FLEURS language-hint coupling: `fleurs_primary` must map the manifest language IDs to primary
+  language codes.
+- No prefix-cache claim: prefix caching was attempted/enabled, but hit rate stayed `0.0%`.
+- No tau-fold: tau-fold is rejected for Track A.

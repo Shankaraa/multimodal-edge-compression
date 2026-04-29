@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 import tempfile
 import time
@@ -135,8 +136,26 @@ def transcribe_audio_bytes(
     max_tokens: int = 1000,
     timeout: int = 300,
     request_lock_timeout: float = 900.0,
+    vad_trim: bool = False,
+    vad_aggressiveness: int = 1,
+    vad_padding_ms: float = 200.0,
 ) -> str:
     import requests
+
+    if vad_trim:
+        import soundfile as sf
+
+        from voxtral_project.audio import audio_array_to_wav_bytes, trim_silence_vad
+
+        audio_array, sample_rate = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+        trimmed_audio = trim_silence_vad(
+            audio_array,
+            sample_rate,
+            aggressiveness=vad_aggressiveness,
+            padding_ms=vad_padding_ms,
+        )
+        audio_bytes = audio_array_to_wav_bytes(trimmed_audio, sample_rate)
+        mime_type = "audio/wav"
 
     api_base = normalize_base_url(base_url)
     files = {

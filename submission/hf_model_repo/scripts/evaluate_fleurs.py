@@ -37,6 +37,27 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--base-url", default="http://localhost:8080/v1", help="Server base URL.")
     parser.add_argument("--model", default="voxtral-realtime", help="Model name exposed by the server.")
+    parser.add_argument(
+        "--model-label",
+        default=None,
+        help="Measurement label such as bf16_baseline or fp8_round1.",
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Optional serving config path; used to hash and stamp the report.",
+    )
+    parser.add_argument("--config-hash", default=None, help="Optional precomputed config SHA-256.")
+    parser.add_argument("--harness-git-sha", default=None, help="Optional git commit SHA.")
+    parser.add_argument(
+        "--normalization-version",
+        default=None,
+        help="Optional SHA-256 of src/voxtral_project/text.py.",
+    )
+    parser.add_argument("--server-log-path", default=None, help="Server log path for this run.")
+    parser.add_argument("--elapsed-seconds", type=float, default=None, help="Measured eval wall time.")
+    parser.add_argument("--energy-joules", type=float, default=None, help="Measured eval energy.")
+    parser.add_argument("--emissions-kg", type=float, default=None, help="Measured eval emissions.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Instruction prompt.")
     parser.add_argument(
         "--language-hint-mode",
@@ -51,6 +72,12 @@ def parse_args() -> argparse.Namespace:
         help="Optional sampling temperature for the vLLM API backend. The model card recommends 0.0.",
     )
     parser.add_argument("--max-tokens", type=int, default=1000, help="Max output tokens.")
+    parser.add_argument(
+        "--empty-retry-count",
+        type=int,
+        default=0,
+        help="Retry a sample this many times when the transcription endpoint returns empty text.",
+    )
     parser.add_argument(
         "--quiet-audio-peak-threshold",
         type=float,
@@ -73,6 +100,24 @@ def parse_args() -> argparse.Namespace:
         "--gate-silence",
         action="store_true",
         help="Apply speech-aware silence gating before transcription.",
+    )
+    parser.add_argument(
+        "--vad-trim",
+        action="store_true",
+        help="Strip leading/trailing silence with conservative WebRTC VAD before transcription.",
+    )
+    parser.add_argument(
+        "--vad-aggressiveness",
+        type=int,
+        choices=(0, 1, 2, 3),
+        default=1,
+        help="WebRTC VAD aggressiveness for --vad-trim.",
+    )
+    parser.add_argument(
+        "--vad-padding-ms",
+        type=float,
+        default=200.0,
+        help="Silence preserved before first voiced frame and after last voiced frame.",
     )
     parser.add_argument(
         "--gate-frame-ms",
@@ -158,6 +203,9 @@ def evaluate_language(
     quiet_audio_target_peak: float,
     max_audio_gain: float,
     gate_silence: bool,
+    vad_trim: bool,
+    vad_aggressiveness: int,
+    vad_padding_ms: float,
     gate_frame_ms: float,
     gate_peak_threshold: float,
     gate_rms_threshold: float,
@@ -167,6 +215,7 @@ def evaluate_language(
     min_internal_silence_run_ms: float,
     dataset_source: str,
     transcriber: object,
+    empty_retry_count: int,
 ) -> dict:
     from voxtral_project.audio import prepare_audio_array_for_transcription
     from voxtral_project.dataset_utils import (
@@ -174,6 +223,11 @@ def evaluate_language(
         load_transcription_dataset_streaming,
     )
     from voxtral_project.text import summarize_transcript_metrics
+    from voxtral_project.text import (
+        character_error_rate_no_whitespace,
+        normalize_asr_text,
+        word_error_rate,
+    )
 
     fleurs = load_transcription_dataset_streaming(
         lang_code=lang_code,
@@ -185,6 +239,8 @@ def evaluate_language(
     references: list[str] = []
     samples: list[dict[str, str]] = []
     empty_prediction_count = 0
+    empty_retry_sample_count = 0
+    empty_retry_request_count = 0
 
     for index, sample in enumerate(fleurs):
         if index >= limit:
@@ -197,6 +253,9 @@ def evaluate_language(
             target_peak=quiet_audio_target_peak,
             max_gain=max_audio_gain,
             gate_silence=gate_silence,
+            vad_trim=vad_trim,
+            vad_aggressiveness=vad_aggressiveness,
+            vad_padding_ms=vad_padding_ms,
             gate_frame_ms=gate_frame_ms,
             gate_peak_threshold=gate_peak_threshold,
             gate_rms_threshold=gate_rms_threshold,
@@ -210,18 +269,38 @@ def evaluate_language(
             sample_rate=sample["audio"]["sampling_rate"],
             lang_code=lang_code,
         )
+        retry_attempts = 0
+        while not prediction.strip() and retry_attempts < empty_retry_count:
+            retry_attempts += 1
+            empty_retry_request_count += 1
+            prediction = transcriber.transcribe(
+                audio_array=prepared_audio_array,
+                sample_rate=sample["audio"]["sampling_rate"],
+                lang_code=lang_code,
+            )
+        if retry_attempts:
+            empty_retry_sample_count += 1
         reference = get_sample_text(sample)
+        normalized_reference = normalize_asr_text(reference)
+        normalized_prediction = normalize_asr_text(prediction)
         is_empty_prediction = not prediction.strip()
         if is_empty_prediction:
             empty_prediction_count += 1
 
+        sample_id = str(sample.get("id", index))
         predictions.append(prediction)
         references.append(reference)
         samples.append(
             {
-                "id": str(sample.get("id", index)),
+                "id": sample_id,
                 "reference": reference,
                 "prediction": prediction,
+                "wer_raw": word_error_rate(reference, prediction),
+                "wer_normalized": word_error_rate(normalized_reference, normalized_prediction),
+                "cer_normalized_no_whitespace": character_error_rate_no_whitespace(
+                    normalized_reference,
+                    normalized_prediction,
+                ),
                 "audio_duration_seconds": round(float(audio_diagnostics["duration_seconds"]), 6),
                 "audio_peak_abs_before": round(float(audio_diagnostics["peak_abs_before"]), 6),
                 "audio_peak_abs_after": round(float(audio_diagnostics["peak_abs_after"]), 6),
@@ -229,6 +308,30 @@ def evaluate_language(
                 "audio_rms_after": round(float(audio_diagnostics["rms_after"]), 6),
                 "audio_gain_applied": round(float(audio_diagnostics["gain_applied"]), 6),
                 "quiet_audio_boosted": bool(audio_diagnostics["quiet_audio_boosted"]),
+                "vad_trim_applied": bool(audio_diagnostics["vad_trim_applied"]),
+                "vad_trim_changed_audio": bool(audio_diagnostics["vad_trim_changed_audio"]),
+                "vad_trim_duration_before_seconds": round(
+                    float(audio_diagnostics["vad_trim_duration_before_seconds"]), 6
+                ),
+                "vad_trim_duration_after_seconds": round(
+                    float(audio_diagnostics["vad_trim_duration_after_seconds"]), 6
+                ),
+                "vad_trim_seconds_removed": round(
+                    float(audio_diagnostics["vad_trim_seconds_removed"]), 6
+                ),
+                "vad_trim_fraction_removed": round(
+                    float(audio_diagnostics["vad_trim_fraction_removed"]), 6
+                ),
+                "vad_trim_leading_trimmed_seconds": round(
+                    float(audio_diagnostics["vad_trim_leading_trimmed_seconds"]), 6
+                ),
+                "vad_trim_trailing_trimmed_seconds": round(
+                    float(audio_diagnostics["vad_trim_trailing_trimmed_seconds"]), 6
+                ),
+                "vad_trim_frame_count": int(audio_diagnostics["vad_trim_frame_count"]),
+                "vad_trim_voiced_frame_count": int(
+                    audio_diagnostics["vad_trim_voiced_frame_count"]
+                ),
                 "speech_gating_applied": bool(audio_diagnostics["speech_gating_applied"]),
                 "speech_gating_changed_audio": bool(audio_diagnostics["speech_gating_changed_audio"]),
                 "speech_gating_duration_before_seconds": round(
@@ -256,6 +359,7 @@ def evaluate_language(
                     audio_diagnostics["speech_gating_internal_spans_compressed"]
                 ),
                 "empty_prediction": is_empty_prediction,
+                "empty_retry_attempts": retry_attempts,
             }
         )
 
@@ -269,6 +373,8 @@ def evaluate_language(
         "dataset_source": dataset_source,
         "samples_evaluated": len(samples),
         "empty_prediction_count": empty_prediction_count,
+        "empty_retry_sample_count": empty_retry_sample_count,
+        "empty_retry_request_count": empty_retry_request_count,
         **metrics,
         "samples": samples,
     }
@@ -277,8 +383,24 @@ def evaluate_language(
 def main() -> int:
     from voxtral_project.asr import build_transcriber
     from voxtral_project.audio import write_json
+    from voxtral_project.reporting import (
+        attach_measurement_contract,
+        ensure_config_hash_in_filename,
+        file_sha256,
+        get_git_head_sha,
+        normalization_version,
+    )
 
     args = parse_args()
+    config_hash = args.config_hash
+    if config_hash is None and args.config:
+        config_path = Path(args.config)
+        if not config_path.is_absolute():
+            config_path = PROJECT_ROOT / config_path
+        config_hash = file_sha256(config_path)
+    harness_git_sha = args.harness_git_sha or get_git_head_sha(PROJECT_ROOT)
+    normalization_version_hash = args.normalization_version or normalization_version(PROJECT_ROOT)
+
     transcriber = build_transcriber(
         backend=args.backend,
         base_url=args.base_url,
@@ -302,6 +424,9 @@ def main() -> int:
             quiet_audio_target_peak=args.quiet_audio_target_peak,
             max_audio_gain=args.max_audio_gain,
             gate_silence=args.gate_silence,
+            vad_trim=args.vad_trim,
+            vad_aggressiveness=args.vad_aggressiveness,
+            vad_padding_ms=args.vad_padding_ms,
             gate_frame_ms=args.gate_frame_ms,
             gate_peak_threshold=args.gate_peak_threshold,
             gate_rms_threshold=args.gate_rms_threshold,
@@ -311,6 +436,7 @@ def main() -> int:
             min_internal_silence_run_ms=args.min_internal_silence_run_ms,
             dataset_source=args.dataset_source,
             transcriber=transcriber,
+            empty_retry_count=args.empty_retry_count,
         )
         for lang_code in args.lang
     ]
@@ -331,8 +457,26 @@ def main() -> int:
             "compress_internal_silence_to_ms": args.compress_internal_silence_to_ms,
             "min_internal_silence_run_ms": args.min_internal_silence_run_ms,
         },
+        "vad_trim": {
+            "enabled": args.vad_trim,
+            "aggressiveness": args.vad_aggressiveness,
+            "padding_ms": args.vad_padding_ms,
+        },
+        "empty_retry_count": args.empty_retry_count,
         "results": results,
     }
+    attach_measurement_contract(
+        payload,
+        limit=args.limit,
+        model_label=args.model_label or args.model,
+        config_hash=config_hash,
+        harness_git_sha=harness_git_sha,
+        normalization_version_hash=normalization_version_hash,
+        server_log_path=args.server_log_path,
+        elapsed_seconds=args.elapsed_seconds,
+        energy_joules=args.energy_joules,
+        emissions_kg=args.emissions_kg,
+    )
 
     for result in results:
         normalized_wer_ci = result["wer_normalized_bootstrap_ci"]
@@ -350,8 +494,10 @@ def main() -> int:
         )
 
     if args.out:
-        write_json(Path(args.out), payload)
-        print(f"Saved report to: {Path(args.out).resolve()}")
+        out_path = ensure_config_hash_in_filename(Path(args.out), config_hash)
+        payload["report_path"] = str(out_path)
+        write_json(out_path, payload)
+        print(f"Saved report to: {out_path.resolve()}")
 
     return 0
 

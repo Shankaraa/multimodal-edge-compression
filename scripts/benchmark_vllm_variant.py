@@ -24,6 +24,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True, help="vLLM YAML config path.")
     parser.add_argument("--port", type=int, required=True, help="Local server port.")
     parser.add_argument("--label", required=True, help="Short label for output files.")
+    parser.add_argument(
+        "--model-label",
+        default=None,
+        help="Stable label stamped into report contracts, such as bf16_baseline.",
+    )
     parser.add_argument("--lang", default="en_us", help="FLEURS language code.")
     parser.add_argument("--limit", type=int, default=5, help="Number of samples to evaluate.")
     parser.add_argument(
@@ -77,6 +82,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=200.0,
         help="Silence preserved before first voiced frame and after last voiced frame.",
+    )
+    parser.add_argument(
+        "--empty-retry-count",
+        type=int,
+        default=0,
+        help="Retry a sample this many times when the transcription endpoint returns empty text.",
     )
     parser.add_argument(
         "--gate-frame-ms",
@@ -279,6 +290,7 @@ def run_eval(
     preserve_trailing_silence_ms: float,
     compress_internal_silence_to_ms: float | None,
     min_internal_silence_run_ms: float,
+    empty_retry_count: int,
     eval_report: Path,
     energy_report: Path,
     config_hash: str,
@@ -318,6 +330,8 @@ def run_eval(
         language_hint_mode,
         "--out",
         str(eval_report),
+        "--empty-retry-count",
+        str(empty_retry_count),
     ]
     if harness_git_sha:
         command.extend(["--harness-git-sha", harness_git_sha])
@@ -522,6 +536,8 @@ def build_summary(
             "dataset_source": result.get("dataset_source"),
             "samples_evaluated": result["samples_evaluated"],
             "empty_prediction_count": result["empty_prediction_count"],
+            "empty_retry_sample_count": result.get("empty_retry_sample_count", 0),
+            "empty_retry_request_count": result.get("empty_retry_request_count", 0),
             "wer_percent": result["wer_percent"],
             "wer_bootstrap_ci": result.get("wer_bootstrap_ci"),
             "wer_normalized_percent": result["wer_normalized_percent"],
@@ -539,6 +555,13 @@ def build_summary(
             "elapsed_seconds": elapsed_eval_seconds,
             "energy_joules": energy_payload["energy_joules"],
             "emissions_kg": energy_payload.get("emissions_kg"),
+            "ttft_seconds_p50": result.get("ttft_seconds_p50"),
+            "ttft_seconds_p95": result.get("ttft_seconds_p95"),
+            "latency_total_seconds_p50": result.get("latency_total_seconds_p50"),
+            "latency_total_seconds_p95": result.get("latency_total_seconds_p95"),
+            "streaming_tokens_per_second_p50": result.get("streaming_tokens_per_second_p50"),
+            "streaming_tokens_per_second_p95": result.get("streaming_tokens_per_second_p95"),
+            "realtime_failure_threshold_note": result.get("realtime_failure_threshold_note"),
             "total_audio_seconds": total_audio_seconds,
             "audio_seconds_per_wall_second": (
                 total_audio_seconds / elapsed_eval_seconds if elapsed_eval_seconds else None
@@ -624,8 +647,9 @@ def main() -> int:
     config_hash_tag = f"cfg{config_sha256}"
     harness_git_sha = get_git_head_sha(PROJECT_ROOT)
     normalization_version_hash = normalization_version(PROJECT_ROOT)
+    model_label = args.model_label or args.label
 
-    log_path = log_dir / f"{args.label}_{config_hash_tag}_benchmark_server.log"
+    log_path = log_dir / f"{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}_benchmark_server.log"
     eval_report = report_dir / f"fleurs_{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}.json"
     energy_report = report_dir / f"energy_fleurs_{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}.json"
     summary_report = report_dir / f"benchmark_{args.label}_{config_hash_tag}_{args.lang}_limit{args.limit}.json"
@@ -714,7 +738,7 @@ def main() -> int:
                 eval_payload, energy_payload = run_eval(
                     base_url=base_url,
                     model=served_model,
-                    model_label=args.label,
+                    model_label=model_label,
                     lang=args.lang,
                     limit=args.limit,
                     dataset_source=args.dataset_source,
@@ -732,6 +756,7 @@ def main() -> int:
                     preserve_trailing_silence_ms=args.preserve_trailing_silence_ms,
                     compress_internal_silence_to_ms=args.compress_internal_silence_to_ms,
                     min_internal_silence_run_ms=args.min_internal_silence_run_ms,
+                    empty_retry_count=args.empty_retry_count,
                     eval_report=eval_report,
                     energy_report=energy_report,
                     config_hash=config_sha256,

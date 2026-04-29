@@ -1,0 +1,8 @@
+served_model_name: voxtral-realtime
+quantization:
+kv_cache_dtype: auto
+max_model_len: 4096
+gpu_memory_utilization: 0.85
+enable_prefix_caching: true
+compilation_config:
+  cudagraph_mode: PIECEWISE

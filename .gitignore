@@ -32,6 +32,8 @@ artifacts/
 reports/
 logs/
 tmp/
+tmp_hf_verify/
+tmp_readme_verify/
 emissions.csv
 
 .env

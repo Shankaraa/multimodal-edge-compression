@@ -67,6 +67,24 @@ def parse_args() -> argparse.Namespace:
         help="Apply speech-aware silence gating before warmup transcription.",
     )
     parser.add_argument(
+        "--vad-trim",
+        action="store_true",
+        help="Strip leading/trailing silence with conservative WebRTC VAD before warmup.",
+    )
+    parser.add_argument(
+        "--vad-aggressiveness",
+        type=int,
+        choices=(0, 1, 2, 3),
+        default=1,
+        help="WebRTC VAD aggressiveness for --vad-trim.",
+    )
+    parser.add_argument(
+        "--vad-padding-ms",
+        type=float,
+        default=200.0,
+        help="Silence preserved before first voiced frame and after last voiced frame.",
+    )
+    parser.add_argument(
         "--gate-frame-ms",
         type=float,
         default=80.0,
@@ -146,6 +164,9 @@ def main() -> int:
         target_peak=args.quiet_audio_target_peak,
         max_gain=args.max_audio_gain,
         gate_silence=args.gate_silence,
+        vad_trim=args.vad_trim,
+        vad_aggressiveness=args.vad_aggressiveness,
+        vad_padding_ms=args.vad_padding_ms,
         gate_frame_ms=args.gate_frame_ms,
         gate_peak_threshold=args.gate_peak_threshold,
         gate_rms_threshold=args.gate_rms_threshold,
@@ -192,6 +213,10 @@ def main() -> int:
         "audio_rms_after": round(float(audio_diagnostics["rms_after"]), 6),
         "audio_gain_applied": round(float(audio_diagnostics["gain_applied"]), 6),
         "quiet_audio_boosted": bool(audio_diagnostics["quiet_audio_boosted"]),
+        "vad_trim_applied": bool(audio_diagnostics["vad_trim_applied"]),
+        "vad_trim_changed_audio": bool(audio_diagnostics["vad_trim_changed_audio"]),
+        "vad_trim_seconds_removed": round(float(audio_diagnostics["vad_trim_seconds_removed"]), 6),
+        "vad_trim_fraction_removed": round(float(audio_diagnostics["vad_trim_fraction_removed"]), 6),
         "speech_gating_applied": bool(audio_diagnostics["speech_gating_applied"]),
         "speech_gating_changed_audio": bool(audio_diagnostics["speech_gating_changed_audio"]),
         "speech_gating_seconds_removed": round(

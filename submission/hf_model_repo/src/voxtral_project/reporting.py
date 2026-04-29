@@ -129,13 +129,6 @@ def build_measurement_summary(
         "elapsed_seconds": elapsed_seconds,
         "energy_joules": energy_joules,
         "emissions_kg": emissions_kg,
-        "ttft_seconds_p50": result.get("ttft_seconds_p50"),
-        "ttft_seconds_p95": result.get("ttft_seconds_p95"),
-        "latency_total_seconds_p50": result.get("latency_total_seconds_p50"),
-        "latency_total_seconds_p95": result.get("latency_total_seconds_p95"),
-        "streaming_tokens_per_second_p50": result.get("streaming_tokens_per_second_p50"),
-        "streaming_tokens_per_second_p95": result.get("streaming_tokens_per_second_p95"),
-        "realtime_failure_threshold_note": result.get("realtime_failure_threshold_note"),
         "per_sample_wer": [_sample_wer(sample) for sample in result.get("samples", [])],
         "server_log_path": server_log_path,
     }

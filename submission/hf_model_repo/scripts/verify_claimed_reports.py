@@ -26,24 +26,13 @@ def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def first_result(report: dict[str, Any]) -> dict[str, Any]:
-    results = report.get("results")
-    if not isinstance(results, list) or not results:
-        raise ValueError("Expected report to contain a non-empty `results` list.")
-    return results[0]
-
-
-def metric_value(metric_report: dict[str, Any], energy_report: dict[str, Any] | None, key: str) -> Any:
-    if key in {"elapsed_seconds", "energy_joules"}:
-        if energy_report is not None:
-            return energy_report[key]
-        evaluation = metric_report.get("evaluation", {})
-        return evaluation[key]
-
-    if "evaluation" in metric_report:
-        return metric_report["evaluation"][key]
-
-    return first_result(metric_report)[key]
+def value_at_path(payload: dict[str, Any], path: str) -> Any:
+    current: Any = payload
+    for part in path.split("."):
+        if not isinstance(current, dict) or part not in current:
+            raise KeyError(f"Missing path {path!r} at {part!r}")
+        current = current[part]
+    return current
 
 
 def assert_close(*, claim_id: str, key: str, expected: Any, actual: Any) -> None:
@@ -52,9 +41,51 @@ def assert_close(*, claim_id: str, key: str, expected: Any, actual: Any) -> None
             return
     elif expected == actual:
         return
-    raise AssertionError(
-        f"{claim_id}: {key} expected {expected!r}, got {actual!r}"
-    )
+    raise AssertionError(f"{claim_id}: {key} expected {expected!r}, got {actual!r}")
+
+
+def verify_claim(
+    *,
+    reports_dir: Path,
+    claim: dict[str, Any],
+) -> int:
+    claim_id = claim["id"]
+    report = load_json(reports_dir / claim["metric_file"])
+    verified = 0
+
+    for path, expected in claim.get("report_values", {}).items():
+        actual = value_at_path(report, path)
+        assert_close(claim_id=claim_id, key=path, expected=expected, actual=actual)
+        verified += 1
+
+    gate = claim.get("gate")
+    if gate:
+        actual_value = float(value_at_path(report, gate["metric_path"]))
+        margin = float(gate["ceiling_percent"]) - actual_value
+        assert_close(
+            claim_id=claim_id,
+            key="gate.margin_pp",
+            expected=gate["margin_pp"],
+            actual=margin,
+        )
+        verified += 1
+
+    return verified
+
+
+def sum_metric(
+    *,
+    claims_by_id: dict[str, dict[str, Any]],
+    reports_by_file: dict[str, dict[str, Any]],
+    claim_ids: list[str],
+    metric_path: str,
+) -> float:
+    total = 0.0
+    for claim_id in claim_ids:
+        claim = claims_by_id[claim_id]
+        report = reports_by_file[claim["metric_file"]]
+        total += float(value_at_path(report, metric_path))
+    return total
 
 
 def main() -> int:
@@ -64,42 +95,45 @@ def main() -> int:
     claims = load_json(claims_path)
 
     verified = 0
-    loaded_claim_metrics: dict[str, dict[str, Any]] = {}
+    claims_by_id = {claim["id"]: claim for claim in claims["claims"]}
+    reports_by_file = {
+        claim["metric_file"]: load_json(reports_dir / claim["metric_file"])
+        for claim in claims["claims"]
+    }
+
     for claim in claims["claims"]:
-        claim_id = claim["id"]
-        metric_report = load_json(reports_dir / claim["metric_file"])
-        energy_file = claim.get("energy_file")
-        energy_report = load_json(reports_dir / energy_file) if energy_file else None
+        verified += verify_claim(reports_dir=reports_dir, claim=claim)
 
-        for key, expected in claim["metrics"].items():
-            actual = metric_value(metric_report, energy_report, key)
-            assert_close(claim_id=claim_id, key=key, expected=expected, actual=actual)
-            verified += 1
-        loaded_claim_metrics[claim_id] = claim["metrics"]
-
-    if "derived_claims" in claims:
-        bf16 = loaded_claim_metrics["bf16_en_us_limit20_reference"]
-        fp8 = loaded_claim_metrics["fp8_en_us_limit20_core"]
-        derived = {
-            "fp8_vs_bf16_elapsed_reduction_percent": (
-                1.0 - fp8["elapsed_seconds"] / bf16["elapsed_seconds"]
-            )
-            * 100.0,
-            "fp8_vs_bf16_energy_reduction_percent": (
-                1.0 - fp8["energy_joules"] / bf16["energy_joules"]
-            )
-            * 100.0,
+    derived = claims.get("derived_claims", {})
+    if derived:
+        fp8_total = sum_metric(
+            claims_by_id=claims_by_id,
+            reports_by_file=reports_by_file,
+            claim_ids=derived["fp8_claim_ids"],
+            metric_path="evaluation.energy_joules",
+        )
+        bf16_total = sum_metric(
+            claims_by_id=claims_by_id,
+            reports_by_file=reports_by_file,
+            claim_ids=derived["bf16_claim_ids"],
+            metric_path="evaluation.energy_joules",
+        )
+        reduction = (1.0 - fp8_total / bf16_total) * 100.0
+        expected_values = {
+            "fp8_total_energy_joules": fp8_total,
+            "bf16_total_energy_joules": bf16_total,
+            "fp8_vs_bf16_energy_reduction_percent": reduction,
         }
-        for key, actual in derived.items():
+        for key, actual in expected_values.items():
             assert_close(
                 claim_id="derived_claims",
                 key=key,
-                expected=claims["derived_claims"][key],
+                expected=derived[key],
                 actual=actual,
             )
             verified += 1
 
-    print(f"Verified {verified} claimed metrics against {claims_path}.")
+    print(f"Verified {verified} claimed values against {claims_path}.")
     return 0
 
 

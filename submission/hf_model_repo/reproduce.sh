@@ -8,17 +8,16 @@ python_bin="${PYTHON_BIN:-python3}"
 venv_dir="${VENV_DIR:-${repo_root}/.venv}"
 model_id="${MODEL_ID:-mistralai/Voxtral-Mini-4B-Realtime-2602}"
 model_revision="${MODEL_REVISION:-2769294da9567371363522aac9bbcfdd19447add}"
-model_dir="${MODEL_DIR:-models/voxtral-realtime}"
+model_dir="${MODEL_DIR:-${repo_root}}"
 config_path="${CONFIG_PATH:-vllm_config.yaml}"
-port="${PORT:-8115}"
-label="${LABEL:-submission_fp8_runtime}"
-lang="${LANG:-en_us}"
-limit="${LIMIT:-20}"
+base_port="${BASE_PORT:-8145}"
 dataset_source="${DATASET_SOURCE:-google_fleurs}"
 skip_install="${SKIP_INSTALL:-0}"
 install_vllm="${INSTALL_VLLM:-1}"
+download_model="${DOWNLOAD_MODEL:-0}"
 vllm_torch_backend="${VLLM_TORCH_BACKEND:-cu130}"
 vllm_extra_index_url="${VLLM_EXTRA_INDEX_URL:-https://wheels.vllm.ai/nightly/cu130}"
+run_slices="${RUN_SLICES:-en_us:500:submission_tracka_fp8_en500 fr_fr:100:submission_tracka_fp8_fr100 hi_in:100:submission_tracka_fp8_hi100 ja_jp:100:submission_tracka_fp8_ja100}"
 
 if ! command -v "${python_bin}" >/dev/null 2>&1; then
   echo "Python executable not found: ${python_bin}" >&2
@@ -43,26 +42,39 @@ fi
 
 python scripts/verify_claimed_reports.py --reports-dir reports --claims reports/claimed_results.json
 
-download_args=(--repo-id "${model_id}" --local-dir "${model_dir}")
-if [ -n "${model_revision}" ]; then
-  download_args+=(--revision "${model_revision}")
+if [ "${download_model}" != "0" ]; then
+  download_args=(--repo-id "${model_id}" --local-dir "${model_dir}")
+  if [ -n "${model_revision}" ]; then
+    download_args+=(--revision "${model_revision}")
+  fi
+  python scripts/download_model.py "${download_args[@]}"
 fi
-python scripts/download_model.py "${download_args[@]}"
 
 export VOXTRAL_VENV="${venv_dir}"
 
-python scripts/benchmark_vllm_variant.py \
-  --model-path "${model_dir}" \
-  --config "${config_path}" \
-  --port "${port}" \
-  --label "${label}" \
-  --lang "${lang}" \
-  --limit "${limit}" \
-  --dataset-source "${dataset_source}" \
-  --startup-timeout 900
+port="${base_port}"
+for spec in ${run_slices}; do
+  IFS=":" read -r lang limit label <<< "${spec}"
+  echo
+  echo "Running ${label}: ${lang} limit ${limit} on port ${port}"
+  python scripts/benchmark_vllm_variant.py \
+    --model-path "${model_dir}" \
+    --config "${config_path}" \
+    --port "${port}" \
+    --label "${label}" \
+    --lang "${lang}" \
+    --limit "${limit}" \
+    --dataset-source "${dataset_source}" \
+    --language-hint-mode fleurs_primary \
+    --empty-retry-count 2 \
+    --startup-timeout 900
+  port=$((port + 1))
+done
 
 echo
-echo "Reproduction complete."
-echo "Summary: reports/benchmark_${label}_${lang}_limit${limit}.json"
-echo "Evaluation: reports/fleurs_${label}_${lang}_limit${limit}.json"
-echo "Energy: reports/energy_fleurs_${label}_${lang}_limit${limit}.json"
+echo "Track A reproduction complete."
+echo "Generated benchmark summaries:"
+for spec in ${run_slices}; do
+  IFS=":" read -r lang limit label <<< "${spec}"
+  echo "- reports/benchmark_${label}_${lang}_limit${limit}.json"
+done

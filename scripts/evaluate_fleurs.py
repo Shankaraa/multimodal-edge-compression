@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -72,6 +73,12 @@ def parse_args() -> argparse.Namespace:
         help="Optional sampling temperature for the vLLM API backend. The model card recommends 0.0.",
     )
     parser.add_argument("--max-tokens", type=int, default=1000, help="Max output tokens.")
+    parser.add_argument(
+        "--empty-retry-count",
+        type=int,
+        default=0,
+        help="Retry a sample this many times when the transcription endpoint returns empty text.",
+    )
     parser.add_argument(
         "--quiet-audio-peak-threshold",
         type=float,
@@ -189,6 +196,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def percentile(values: list[float], q: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * q
+    lower_index = int(position)
+    upper_index = min(lower_index + 1, len(ordered) - 1)
+    fraction = position - lower_index
+    return ordered[lower_index] + (ordered[upper_index] - ordered[lower_index]) * fraction
+
+
 def evaluate_language(
     *,
     lang_code: str,
@@ -209,6 +229,7 @@ def evaluate_language(
     min_internal_silence_run_ms: float,
     dataset_source: str,
     transcriber: object,
+    empty_retry_count: int,
 ) -> dict:
     from voxtral_project.audio import prepare_audio_array_for_transcription
     from voxtral_project.dataset_utils import (
@@ -230,8 +251,11 @@ def evaluate_language(
 
     predictions: list[str] = []
     references: list[str] = []
-    samples: list[dict[str, str]] = []
+    samples: list[dict[str, object]] = []
     empty_prediction_count = 0
+    empty_retry_sample_count = 0
+    empty_retry_request_count = 0
+    latency_total_seconds: list[float] = []
 
     for index, sample in enumerate(fleurs):
         if index >= limit:
@@ -255,11 +279,30 @@ def evaluate_language(
             compress_internal_silence_to_ms=compress_internal_silence_to_ms,
             min_internal_silence_run_ms=min_internal_silence_run_ms,
         )
+        sample_started = time.perf_counter()
+        attempt_latencies: list[float] = []
+        attempt_started = time.perf_counter()
         prediction = transcriber.transcribe(
             audio_array=prepared_audio_array,
             sample_rate=sample["audio"]["sampling_rate"],
             lang_code=lang_code,
         )
+        attempt_latencies.append(time.perf_counter() - attempt_started)
+        retry_attempts = 0
+        while not prediction.strip() and retry_attempts < empty_retry_count:
+            retry_attempts += 1
+            empty_retry_request_count += 1
+            attempt_started = time.perf_counter()
+            prediction = transcriber.transcribe(
+                audio_array=prepared_audio_array,
+                sample_rate=sample["audio"]["sampling_rate"],
+                lang_code=lang_code,
+            )
+            attempt_latencies.append(time.perf_counter() - attempt_started)
+        sample_latency_total = time.perf_counter() - sample_started
+        latency_total_seconds.append(sample_latency_total)
+        if retry_attempts:
+            empty_retry_sample_count += 1
         reference = get_sample_text(sample)
         normalized_reference = normalize_asr_text(reference)
         normalized_prediction = normalize_asr_text(prediction)
@@ -281,6 +324,12 @@ def evaluate_language(
                     normalized_reference,
                     normalized_prediction,
                 ),
+                "latency_total_seconds": round(sample_latency_total, 6),
+                "latency_attempt_seconds": [
+                    round(attempt_latency, 6) for attempt_latency in attempt_latencies
+                ],
+                "ttft_seconds": None,
+                "streaming_tokens_per_second": None,
                 "audio_duration_seconds": round(float(audio_diagnostics["duration_seconds"]), 6),
                 "audio_peak_abs_before": round(float(audio_diagnostics["peak_abs_before"]), 6),
                 "audio_peak_abs_after": round(float(audio_diagnostics["peak_abs_after"]), 6),
@@ -339,6 +388,7 @@ def evaluate_language(
                     audio_diagnostics["speech_gating_internal_spans_compressed"]
                 ),
                 "empty_prediction": is_empty_prediction,
+                "empty_retry_attempts": retry_attempts,
             }
         )
 
@@ -352,6 +402,21 @@ def evaluate_language(
         "dataset_source": dataset_source,
         "samples_evaluated": len(samples),
         "empty_prediction_count": empty_prediction_count,
+        "empty_retry_sample_count": empty_retry_sample_count,
+        "empty_retry_request_count": empty_retry_request_count,
+        "latency_total_seconds_p50": percentile(latency_total_seconds, 0.50),
+        "latency_total_seconds_p95": percentile(latency_total_seconds, 0.95),
+        "ttft_seconds_p50": None,
+        "ttft_seconds_p95": None,
+        "streaming_tokens_per_second_p50": None,
+        "streaming_tokens_per_second_p95": None,
+        "realtime_failure_threshold_note": (
+            "This non-streaming /v1/audio/transcriptions harness would fail any "
+            f"total-utterance p95 constraint below {percentile(latency_total_seconds, 0.95):.6f}s. "
+            "TTFT and streaming tokens/sec are unavailable unless a streaming endpoint is used."
+            if latency_total_seconds
+            else "No latency threshold can be derived because no samples were evaluated."
+        ),
         **metrics,
         "samples": samples,
     }
@@ -413,6 +478,7 @@ def main() -> int:
             min_internal_silence_run_ms=args.min_internal_silence_run_ms,
             dataset_source=args.dataset_source,
             transcriber=transcriber,
+            empty_retry_count=args.empty_retry_count,
         )
         for lang_code in args.lang
     ]
@@ -438,6 +504,7 @@ def main() -> int:
             "aggressiveness": args.vad_aggressiveness,
             "padding_ms": args.vad_padding_ms,
         },
+        "empty_retry_count": args.empty_retry_count,
         "results": results,
     }
     attach_measurement_contract(

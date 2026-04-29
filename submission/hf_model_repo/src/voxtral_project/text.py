@@ -91,6 +91,43 @@ def _safe_ratio(numerator: int, denominator: int) -> float:
     return 0.0 if numerator == 0 else 1.0
 
 
+def word_error_rate(reference: str, prediction: str) -> float:
+    reference_words = reference.split()
+    prediction_words = prediction.split()
+    return _safe_ratio(_edit_distance(reference_words, prediction_words), len(reference_words))
+
+
+def character_error_rate_no_whitespace(reference: str, prediction: str) -> float:
+    reference_chars = list(remove_all_whitespace(reference))
+    prediction_chars = list(remove_all_whitespace(prediction))
+    return _safe_ratio(_edit_distance(reference_chars, prediction_chars), len(reference_chars))
+
+
+def bootstrap_wer_ci(refs: Sequence[str], hyps: Sequence[str], n: int = 1000, alpha: float = 0.05) -> tuple[float, float]:
+    import random
+
+    import jiwer
+
+    if len(refs) != len(hyps):
+        raise ValueError("refs and hyps must have the same length.")
+
+    n_samples = len(refs)
+    if n_samples == 0:
+        return 0.0, 0.0
+
+    rng = random.Random(BOOTSTRAP_SEED)
+    scores = []
+    for _ in range(n):
+        idx = [rng.randrange(n_samples) for _ in range(n_samples)]
+        sampled_refs = [refs[i] for i in idx]
+        sampled_hyps = [hyps[i] for i in idx]
+        scores.append(jiwer.wer(sampled_refs, sampled_hyps))
+    scores.sort()
+    lo = scores[int(n * alpha / 2)]
+    hi = scores[int(n * (1 - alpha / 2))]
+    return lo, hi
+
+
 def _sample_metric_counts(
     *,
     references: Sequence[str],

@@ -1,128 +1,118 @@
-# Voxtral Runtime-FP8 Submission Artifact
+---
+license: apache-2.0
+base_model: mistralai/Voxtral-Mini-4B-Realtime-2602
+library_name: vllm
+pipeline_tag: automatic-speech-recognition
+tags:
+- voxtral
+- vllm
+- fp8
+- resilient-ai-challenge
+---
 
-This is a runtime-FP8 Voxtral submission, not a static post-training quantized checkpoint.
-The artifact downloads `mistralai/Voxtral-Mini-4B-Realtime-2602` at revision
-`2769294da9567371363522aac9bbcfdd19447add` and serves it with the exact vLLM config in
-`vllm_config.yaml`.
+# Voxtral Mini Realtime FP8 Runtime Package
 
-Single-command reproduction after cloning this repo:
+This repository packages `mistralai/Voxtral-Mini-4B-Realtime-2602` with the exact vLLM serving
+configuration used for the reported benchmark results. The model is served with vLLM runtime FP8
+quantization and FP8 E4M3 KV cache.
+
+The repository root includes `consolidated.safetensors`, so the serving config resolves the model
+locally:
+
+```bash
+vllm serve --config vllm_config.yaml
+```
+
+Single-command benchmark reproduction after cloning:
 
 ```bash
 bash reproduce.sh
 ```
 
-That command creates a Python environment, installs the benchmark harness, downloads the base
-model, starts vLLM, runs the canonical English FLEURS benchmark, measures energy, writes fresh JSON
-reports, and stops the server.
+The reproduction script serves this package with `vllm_config.yaml`, runs the configured FLEURS
+benchmark slices, records energy, and writes benchmark JSON files under `reports/`.
 
-## Compression Method
+## Package Contents
 
-The defended compression path is vLLM runtime FP8:
-
-- base checkpoint: `mistralai/Voxtral-Mini-4B-Realtime-2602`
-- base revision: `2769294da9567371363522aac9bbcfdd19447add`
-- serving config: `vllm_config.yaml`
-- served model name: `voxtral-realtime`
-- vLLM quantization: `fp8`
+- Base model: `mistralai/Voxtral-Mini-4B-Realtime-2602`
+- Base revision: `2769294da9567371363522aac9bbcfdd19447add`
+- Packaged weights: `consolidated.safetensors`
+- Serving config: `vllm_config.yaml`
+- Local model path in serving config: `.`
+- Runtime quantization: `fp8`
 - KV cache dtype: `fp8_e4m3`
-- attention backend: `TRITON_ATTN`
-- max model length: `8192`
-- GPU memory utilization: `0.85`
-- CUDA graph mode: `PIECEWISE`
+- Max model length: `4096`
+- Benchmark policy: `--language-hint-mode fleurs_primary --empty-retry-count 2`
+- VAD trimming: disabled
 
-`enable_prefix_caching` is present in the pinned config because it was part of the runtime envelope,
-but prefix-cache speedup is not part of the claimed result. It was attempted and did not activate
-on this vLLM build for the measured speech transcription path.
+This is a runtime-quantized serving package. The checkpoint weights are the packaged BF16 base
+weights; compression is applied by the pinned vLLM runtime configuration.
 
-## Claimed Numbers
+## Reported Results
 
-All numbers below are copied from committed JSON in `reports/`. The machine for the submitted
-runs used an NVIDIA GeForce RTX 5080 with 16 GB VRAM.
+Every value in this table is cross-referenced through `reports/claimed_results.json` and the
+committed benchmark reports in `reports/`.
 
-| Run | Language | Samples | Raw WER | Norm WER | Empty preds | Time | Energy | Report files |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| BF16 Voxtral reference | `en_us` | 20 | 22.20% | 6.36% | 0 | 46.26 s | 8112.90 J | `reports/fleurs_bf16_en_us_limit20_quietfix.json`, `reports/energy_fleurs_bf16_en_us_limit20_quietfix.json` |
-| FP8 Voxtral candidate | `en_us` | 20 | 21.97% | 6.36% | 0 | 35.21 s | 4952.89 J | `reports/fleurs_fp8_en_us_limit20_quietfix.json`, `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json` |
-| Whisper large-v3 anchor | `en_us` | 20 | 20.59% | 4.32% | 0 | 34.77 s | 3258.57 J | `reports/fleurs_whisper_large_v3_en_us_limit20.json`, `reports/energy_fleurs_whisper_large_v3_en_us_limit20.json` |
+| Language | Samples | Metric | Value | 95% CI low | 95% CI high | Empty predictions | Retry requests | Energy |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| English (`en_us`) | 500 | normalized WER | 6.1456% | 5.4996% | 6.7794% | 0 | 0 | 189,442.10 J |
+| French (`fr_fr`) | 100 | normalized WER | 8.4548% | 6.7809% | 10.2486% | 0 | 0 | 37,882.64 J |
+| Hindi (`hi_in`) | 100 | normalized WER | 25.4309% | 22.4806% | 28.6336% | 0 | 0 | 44,502.93 J |
+| Japanese (`ja_jp`) | 100 | no-space CER | 7.0919% | 5.5534% | 8.6900% | 0 | 0 | 73,906.48 J |
 
-Against the BF16 Voxtral reference, the FP8 candidate is 23.89% faster and uses 38.95% less measured
-energy on this 20-sample English slice. Those derived values are recorded in
-`reports/claimed_results.json`.
+`reports/claimed_results.json` lists the source report file for each row in the table.
 
-## Per-Language FP8 Checks
+## Energy Summary
 
-| Language | Samples | Defended quality read | Empty preds | Time | Energy | Report files |
-| --- | ---: | --- | ---: | ---: | ---: | --- |
-| `en_us` | 20 | raw WER 21.97%, normalized WER 6.36% | 0 | 35.21 s | 4952.89 J | `reports/fleurs_fp8_en_us_limit20_quietfix.json`, `reports/energy_fleurs_fp8_en_us_limit20_quietfix.json` |
-| `fr_fr` | 5 | raw WER 23.18%, normalized WER 10.56% | 0 | 21.74 s | 2121.87 J | `reports/fleurs_fp8_fr_fr_limit5_quietfix.json`, `reports/energy_fleurs_fp8_fr_fr_limit5_quietfix.json` |
-| `hi_in` | 5 | raw WER 26.83%, normalized WER 23.58% | 0 | 16.93 s | 1620.28 J | `reports/fleurs_fp8_hi_in_limit5_quietfix.json`, `reports/energy_fleurs_fp8_hi_in_limit5_quietfix.json` |
-| `ja_jp` | 5 | CER 10.42%, no-whitespace CER 10.00% | 0 | 19.62 s | 2692.89 J | `reports/fleurs_fp8_ja_jp_limit5_quietfix_v2.json`, `reports/energy_fleurs_fp8_ja_jp_limit5_quietfix_v2.json` |
+- Runtime-FP8 total energy across the reported slices: `345,734.14 J`
+- BF16 reference total energy under the same benchmark policy: `474,614.96 J`
+- Measured energy reduction: `27.15%`
 
-Japanese word-level WER is not the quality claim because whitespace segmentation dominates that
-metric. The committed Japanese report includes raw WER for transparency and CER for the defended
-read.
+These values are derived in `reports/claimed_results.json` from the FP8 reports and the BF16
+reference reports committed in `reports/`.
 
-## Reproduction Details
+## Reproduction
 
-Default command:
+Default full reproduction:
 
 ```bash
 bash reproduce.sh
 ```
 
-Useful overrides:
+Expected output: language-specific benchmark JSON files written under `reports/`.
+
+Quick smoke run:
+
+```bash
+RUN_SLICES="en_us:1:packaged_smoke_en1" DOWNLOAD_MODEL=0 MODEL_DIR=/path/to/voxtral bash reproduce.sh
+```
+
+Useful environment overrides:
 
 ```bash
 SKIP_INSTALL=1 bash reproduce.sh
 INSTALL_VLLM=0 bash reproduce.sh
-PORT=8120 LABEL=my_rerun bash reproduce.sh
-LANG=fr_fr LIMIT=5 LABEL=fp8_fr_rerun bash reproduce.sh
+BASE_PORT=8200 bash reproduce.sh
 MODEL_DIR=/path/to/local/voxtral bash reproduce.sh
 ```
 
-Expected output files for the default run:
-
-- `reports/benchmark_submission_fp8_runtime_en_us_limit20.json`
-- `reports/fleurs_submission_fp8_runtime_en_us_limit20.json`
-- `reports/energy_fleurs_submission_fp8_runtime_en_us_limit20.json`
-
-The script also runs:
+Before running benchmarks, the script verifies the committed claims:
 
 ```bash
 python scripts/verify_claimed_reports.py --reports-dir reports --claims reports/claimed_results.json
 ```
 
-That verifier proves the README numbers are traceable to the committed report JSON.
+That check fails if reported values drift from the committed JSON reports.
 
-## Environment Notes
+## Logs
 
-This workflow is intended for Linux or WSL2 with an NVIDIA GPU and a working CUDA stack. The default
-vLLM install path uses the CUDA 13.0 nightly wheel path used for the submitted runs:
+Server logs from the reported FP8 runs are included under `logs/`.
 
-```bash
-uv pip install -U vllm --torch-backend=cu130 --extra-index-url https://wheels.vllm.ai/nightly/cu130
-```
+## Notes
 
-For a different CUDA stack, set `VLLM_TORCH_BACKEND` and `VLLM_EXTRA_INDEX_URL` before running
-`reproduce.sh`.
-
-## Manual Serve Command
-
-If the environment is already prepared and the base model is already downloaded:
-
-```bash
-python scripts/serve_model.py models/voxtral-realtime --config vllm_config.yaml --port 8115
-python scripts/check_vllm_server.py --base-url http://127.0.0.1:8115/v1
-```
-
-Then evaluate:
-
-```bash
-python scripts/measure_energy.py --report reports/manual_energy.json -- \
-  python scripts/evaluate_fleurs.py \
-    --lang en_us \
-    --limit 20 \
-    --base-url http://127.0.0.1:8115/v1 \
-    --model voxtral-realtime \
-    --out reports/manual_fleurs.json
-```
+- Energy measurements are hardware- and harness-dependent; the reported values are tied to the
+  committed benchmark reports.
+- The benchmark uses FLEURS primary language hints: `en_us -> en`, `fr_fr -> fr`, `hi_in -> hi`,
+  and `ja_jp -> ja`.
+- Prefix caching is enabled in `vllm_config.yaml`, but the reported results do not attribute any
+  efficiency gain to prefix-cache reuse.

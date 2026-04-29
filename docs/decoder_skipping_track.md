@@ -5,6 +5,11 @@
 This track exists to test the PDF's central claim without destabilizing the working submission
 path.
 
+Current decision from the 2026-04-28 Chat 04 measurement pass: do not invest in decoder skipping
+from the current artifacts. The saved FLEURS reports contain decoded text only, not raw generated
+token IDs, and the decoded-visible `[STREAMING_PAD]` / `[P]` lower bound is `0.00%` on EN, FR, HI,
+and JA. That is not evidence for a pad-heavy future optimization.
+
 The claim is not "quantize harder."
 
 The claim is:
@@ -39,7 +44,14 @@ So the correct first move is to estimate whether the opportunity is even large e
 
 The PDF talks about Voxtral emitting many pad tokens during delayed streaming.
 
-We are not measuring pad-token rate yet.
+The current saved reports cannot measure true pad-token emission because they do not store raw
+generated token IDs. The decoded transcript text has no visible pad or word-boundary control
+markers, so the only current measurement is a lower bound:
+
+- EN: `0.00%` visible pad/control markers on 500 FP8 Track A final predictions
+- FR: `0.00%` visible pad/control markers on 100 FP8 Track A final predictions
+- HI: `0.00%` visible pad/control markers on 100 FP8 Track A final predictions
+- JA: `0.00%` visible pad/control markers on 100 FP8 Track A final predictions
 
 What we can measure immediately is the closest cheap proxy:
 

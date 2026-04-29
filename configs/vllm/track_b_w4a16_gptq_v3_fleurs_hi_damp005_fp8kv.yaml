@@ -1,8 +1,10 @@
-model: .
+model: models/voxtral-w4a16-llmcompressor-v3-fleurs-hi-damp005-consolidated
 served_model_name: voxtral-realtime
-quantization: fp8
+quantization: compressed-tensors
 kv_cache_dtype: fp8_e4m3
 attention_backend: TRITON_ATTN
+tokenizer: models/voxtral-realtime
+tokenizer_mode: mistral
 max_model_len: 4096
 gpu_memory_utilization: 0.70
 max_num_seqs: 1

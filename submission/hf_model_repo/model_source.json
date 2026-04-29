@@ -1,20 +1,36 @@
 {
   "submission_type": "base_checkpoint_served_with_vllm_runtime_fp8",
+  "track": "Track A",
   "base_model_id": "mistralai/Voxtral-Mini-4B-Realtime-2602",
   "base_model_revision": "2769294da9567371363522aac9bbcfdd19447add",
   "local_model_dir_default": "models/voxtral-realtime",
   "serving_config": "vllm_config.yaml",
+  "serving_config_sha256": "local package config adds model: . for organizer serve; benchmark runs used the same runtime fields without the model key",
   "served_model_name": "voxtral-realtime",
-  "artifact_policy": "No static quantized checkpoint is required for the defended result. The base BF16 Voxtral checkpoint is downloaded from Hugging Face and served with vLLM runtime FP8 quantization plus FP8 E4M3 KV cache exactly as pinned in vllm_config.yaml.",
+  "packaged_weight_files": [
+    "consolidated.safetensors"
+  ],
+  "final_client_policy": {
+    "language_hint_mode": "fleurs_primary",
+    "empty_retry_count": 2,
+    "vad_trim": false,
+    "speech_gating": false,
+    "dataset_source": "google_fleurs"
+  },
+  "artifact_policy": "The repo root contains the base BF16 Voxtral consolidated checkpoint weights and serves them with vLLM runtime FP8 quantization plus FP8 E4M3 KV cache exactly as pinned in vllm_config.yaml.",
   "defended_runtime_claims": [
     "vLLM runtime quantization: fp8",
     "KV cache dtype: fp8_e4m3",
-    "max_model_len: 8192",
-    "gpu_memory_utilization: 0.85",
+    "max_model_len: 4096",
+    "gpu_memory_utilization: 0.70",
+    "max_num_seqs: 1",
+    "max_num_batched_tokens: 4096",
     "attention_backend: TRITON_ATTN",
     "compilation_config.cudagraph_mode: PIECEWISE"
   ],
   "not_defended_as_performance_claims": [
-    "prefix-cache speedup; the config enables prefix caching, but measured speech-path hit rate stayed at 0.0%"
+    "prefix-cache speedup; the config enables prefix caching, but measured speech-path hit rate stayed at 0.0%",
+    "tau-fold; it was rejected for Track A because it drifted WER",
+    "pre-endpoint VAD trimming; final Track A uses no VAD"
   ]
 }
