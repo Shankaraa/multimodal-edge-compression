@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 TRANSCRIPT_TEXT_FIELDS = (
     "text",
     "sentence",
@@ -11,7 +13,26 @@ TRANSCRIPT_TEXT_FIELDS = (
 FLEURS_DATASET_SOURCES = (
     "google_fleurs",
     "open_asr_multilingual",
+    "common_voice_17",
 )
+
+COMMON_VOICE_17_DEFAULT_REPO_ID = "fsicoli/common_voice_17_0"
+
+COMMON_VOICE_17_CONFIGS = {
+    "ar_eg": "ar",
+    "cmn_hans_cn": "zh-CN",
+    "de_de": "de",
+    "en_us": "en",
+    "es_419": "es",
+    "fr_fr": "fr",
+    "hi_in": "hi",
+    "it_it": "it",
+    "ja_jp": "ja",
+    "ko_kr": "ko",
+    "nl_nl": "nl",
+    "pt_br": "pt",
+    "ru_ru": "ru",
+}
 
 
 def fleurs_primary_language(lang_code: str) -> str:
@@ -33,6 +54,17 @@ def get_sample_text(sample: dict) -> str:
 
 def open_asr_fleurs_config_name(lang_code: str) -> str:
     return f"fleurs_{fleurs_primary_language(lang_code)}"
+
+
+def common_voice_17_config_name(lang_code: str) -> str:
+    try:
+        return COMMON_VOICE_17_CONFIGS[lang_code]
+    except KeyError as exc:
+        raise ValueError(f"No Common Voice 17 config mapped for language: {lang_code}") from exc
+
+
+def common_voice_17_repo_id() -> str:
+    return os.environ.get("COMMON_VOICE_17_REPO_ID", COMMON_VOICE_17_DEFAULT_REPO_ID)
 
 
 def load_transcription_dataset_streaming(
@@ -68,6 +100,34 @@ def load_transcription_dataset_streaming(
             open_asr_fleurs_config_name(lang_code),
             split=split,
             streaming=True,
+        )
+
+    if dataset_source == "common_voice_17":
+        from datasets import Audio, Features, Value
+
+        return load_dataset(
+            common_voice_17_repo_id(),
+            common_voice_17_config_name(lang_code),
+            split=split,
+            streaming=True,
+            features=Features(
+                {
+                    "client_id": Value("string"),
+                    "path": Value("string"),
+                    "sentence_id": Value("string"),
+                    "sentence": Value("string"),
+                    "sentence_domain": Value("string"),
+                    "up_votes": Value("string"),
+                    "down_votes": Value("string"),
+                    "age": Value("string"),
+                    "gender": Value("string"),
+                    "variant": Value("string"),
+                    "locale": Value("string"),
+                    "segment": Value("string"),
+                    "accent": Value("string"),
+                    "audio": Audio(sampling_rate=48_000, mono=True, decode=True),
+                }
+            ),
         )
 
     raise ValueError(f"Unsupported dataset source: {dataset_source}")

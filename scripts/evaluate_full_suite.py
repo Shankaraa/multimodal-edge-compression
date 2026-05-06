@@ -29,12 +29,12 @@ LANGUAGES = (
 
 DATASET_SOURCES = (
     "google_fleurs",
-    "open_asr_multilingual",
+    "common_voice_17",
 )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate all 13 FLEURS languages across both repo corpora.")
+    parser = argparse.ArgumentParser(description="Evaluate all 13 Voxtral languages across FLEURS and Common Voice 17.")
     parser.add_argument("--base-url", default="http://localhost:8001/v1")
     parser.add_argument("--model", default="voxtral-realtime")
     parser.add_argument("--model-label", default=None)
