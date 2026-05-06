@@ -42,6 +42,15 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional sampling temperature for the vLLM API backend.",
     )
+    parser.add_argument(
+        "--target-streaming-delay-ms",
+        type=int,
+        default=None,
+        help=(
+            "Optional Voxtral Realtime target delay tau in milliseconds. "
+            "Defaults to the served model's configured delay."
+        ),
+    )
     parser.add_argument("--max-tokens", type=int, default=1000, help="Max output tokens.")
     parser.add_argument(
         "--quiet-audio-peak-threshold",
@@ -183,6 +192,7 @@ def main() -> int:
         prompt=args.prompt,
         language_hint_mode=args.language_hint_mode,
         temperature=args.temperature,
+        target_streaming_delay_ms=args.target_streaming_delay_ms,
         max_tokens=args.max_tokens,
         hf_model_id="openai/whisper-large-v3",
         hf_device="auto",

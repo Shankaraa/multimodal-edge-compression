@@ -36,6 +36,7 @@ class VLLMApiTranscriber:
     prompt: str = DEFAULT_PROMPT
     language_hint_mode: str = "none"
     temperature: float | None = None
+    target_streaming_delay_ms: int | None = None
     max_tokens: int = 1000
 
     backend_name: str = "vllm_api"
@@ -60,6 +61,7 @@ class VLLMApiTranscriber:
             prompt=self.prompt,
             language=language,
             temperature=self.temperature,
+            target_streaming_delay_ms=self.target_streaming_delay_ms,
             max_tokens=self.max_tokens,
         )
 
@@ -76,6 +78,7 @@ class VLLMApiTranscriber:
             "prompt": self.prompt,
             "language_hint_mode": self.language_hint_mode,
             "temperature": self.temperature,
+            "target_streaming_delay_ms": self.target_streaming_delay_ms,
             "max_tokens": self.max_tokens,
         }
 
@@ -196,6 +199,7 @@ def build_transcriber(
     hf_torch_dtype: str,
     hf_attn_implementation: str | None,
     hf_language_hint_mode: str,
+    target_streaming_delay_ms: int | None = None,
 ) -> VLLMApiTranscriber | WhisperTransformersTranscriber:
     if backend == "vllm_api":
         return VLLMApiTranscriber(
@@ -204,6 +208,7 @@ def build_transcriber(
             prompt=prompt,
             language_hint_mode=language_hint_mode,
             temperature=temperature,
+            target_streaming_delay_ms=target_streaming_delay_ms,
             max_tokens=max_tokens,
         )
     if backend == "whisper_transformers":

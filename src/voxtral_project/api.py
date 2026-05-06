@@ -133,6 +133,7 @@ def transcribe_audio_bytes(
     prompt: str = DEFAULT_PROMPT,
     language: str | None = None,
     temperature: float | None = None,
+    target_streaming_delay_ms: int | None = None,
     max_tokens: int = 1000,
     timeout: int = 300,
     request_lock_timeout: float = 900.0,
@@ -171,6 +172,8 @@ def transcribe_audio_bytes(
         data["language"] = language
     if temperature is not None:
         data["temperature"] = str(temperature)
+    if target_streaming_delay_ms is not None:
+        data["target_streaming_delay_ms"] = str(target_streaming_delay_ms)
     with transcription_request_lock(
         base_url=api_base,
         model=model,

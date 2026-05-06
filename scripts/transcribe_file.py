@@ -23,6 +23,15 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional sampling temperature. The official recommendation is 0.0.",
     )
+    parser.add_argument(
+        "--target-streaming-delay-ms",
+        type=int,
+        default=None,
+        help=(
+            "Optional Voxtral Realtime target delay tau in milliseconds. "
+            "Defaults to the served model's configured delay."
+        ),
+    )
     parser.add_argument("--max-tokens", type=int, default=1000, help="Max output tokens.")
     return parser.parse_args()
 
@@ -41,6 +50,7 @@ def main() -> int:
         prompt=args.prompt,
         language=args.language,
         temperature=args.temperature,
+        target_streaming_delay_ms=args.target_streaming_delay_ms,
         max_tokens=args.max_tokens,
     )
     print(transcript)

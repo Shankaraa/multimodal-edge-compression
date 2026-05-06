@@ -58,6 +58,8 @@ def build_command(model_path: str, config: dict[str, Any], host: str | None, por
     command.extend(["--port", str(port)])
 
     for key, value in config.items():
+        if key == "model":
+            continue
         append_option(command, key, value)
 
     return command

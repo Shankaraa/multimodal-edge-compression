@@ -15,13 +15,31 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+MODE_CONFIGS = {
+    "bf16": "configs/vllm/bf16_current_harness.yaml",
+    "fp8": "configs/vllm/fp8_round1.yaml",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Benchmark a vLLM-served Voxtral variant on a small comparable slice."
     )
     parser.add_argument("--model-path", required=True, help="Model path to serve.")
-    parser.add_argument("--config", required=True, help="vLLM YAML config path.")
+    parser.add_argument(
+        "--mode",
+        choices=tuple(MODE_CONFIGS),
+        default=None,
+        help=(
+            "Serve with the repo's same-harness BF16 or FP8 config. "
+            "Use --config to override the selected config explicitly."
+        ),
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="vLLM YAML config path. Optional when --mode is supplied.",
+    )
     parser.add_argument("--port", type=int, required=True, help="Local server port.")
     parser.add_argument("--label", required=True, help="Short label for output files.")
     parser.add_argument(
@@ -53,6 +71,15 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=None,
         help="Optional sampling temperature. The model card recommends 0.0.",
+    )
+    parser.add_argument(
+        "--target-streaming-delay-ms",
+        type=int,
+        default=None,
+        help=(
+            "Optional Voxtral Realtime target delay tau in milliseconds. "
+            "Defaults to the served model's configured delay."
+        ),
     )
     parser.add_argument(
         "--startup-timeout",
@@ -184,6 +211,7 @@ def benchmark_first_request(
     prompt: str,
     language_hint_mode: str,
     temperature: float | None,
+    target_streaming_delay_ms: int | None,
     gate_silence: bool,
     vad_trim: bool,
     vad_aggressiveness: int,
@@ -236,6 +264,7 @@ def benchmark_first_request(
         prompt=prompt,
         language=(lang_code.split("_", 1)[0].lower() if language_hint_mode == "fleurs_primary" else None),
         temperature=temperature,
+        target_streaming_delay_ms=target_streaming_delay_ms,
         max_tokens=1000,
         timeout=300,
     )
@@ -249,6 +278,7 @@ def benchmark_first_request(
         "prompt": prompt,
         "language_hint_mode": language_hint_mode,
         "temperature": temperature,
+        "target_streaming_delay_ms": target_streaming_delay_ms,
         "latency_seconds": elapsed,
         "audio_duration_seconds": float(audio_diagnostics["duration_seconds"]),
         "vad_trim_applied": bool(audio_diagnostics["vad_trim_applied"]),
@@ -279,6 +309,7 @@ def run_eval(
     prompt: str,
     language_hint_mode: str,
     temperature: float | None,
+    target_streaming_delay_ms: int | None,
     gate_silence: bool,
     vad_trim: bool,
     vad_aggressiveness: int,
@@ -333,6 +364,8 @@ def run_eval(
         "--empty-retry-count",
         str(empty_retry_count),
     ]
+    if target_streaming_delay_ms is not None:
+        command.extend(["--target-streaming-delay-ms", str(target_streaming_delay_ms)])
     if harness_git_sha:
         command.extend(["--harness-git-sha", harness_git_sha])
     if temperature is not None:
@@ -404,6 +437,7 @@ def run_warmup(
     prompt: str,
     language_hint_mode: str,
     temperature: float | None,
+    target_streaming_delay_ms: int | None,
     gate_silence: bool,
     vad_trim: bool,
     vad_aggressiveness: int,
@@ -437,6 +471,8 @@ def run_warmup(
         "--out",
         str(warmup_report),
     ]
+    if target_streaming_delay_ms is not None:
+        command.extend(["--target-streaming-delay-ms", str(target_streaming_delay_ms)])
     if temperature is not None:
         command.extend(["--temperature", str(temperature)])
     if vad_trim:
@@ -516,6 +552,7 @@ def build_summary(
         "prompt": first_request.get("prompt"),
         "language_hint_mode": first_request.get("language_hint_mode"),
         "temperature": first_request.get("temperature"),
+        "target_streaming_delay_ms": first_request.get("target_streaming_delay_ms"),
         "vad_trim": eval_payload.get("vad_trim"),
         "speech_gating": eval_payload.get("speech_gating"),
         "startup_seconds": startup_seconds,
@@ -552,6 +589,11 @@ def build_summary(
             "cer_no_whitespace_normalized_bootstrap_ci": result.get(
                 "cer_no_whitespace_normalized_bootstrap_ci"
             ),
+            "hyp_chars_total": result.get("hyp_chars_total"),
+            "ref_chars_total": result.get("ref_chars_total"),
+            "verbosity_ratio": result.get("verbosity_ratio"),
+            "verbosity_drift_warning": result.get("verbosity_drift_warning"),
+            "verbosity_drift_warning_range": result.get("verbosity_drift_warning_range"),
             "elapsed_seconds": elapsed_eval_seconds,
             "energy_joules": energy_payload["energy_joules"],
             "emissions_kg": energy_payload.get("emissions_kg"),
@@ -607,6 +649,7 @@ def build_failed_summary(
         "prompt": first_request.get("prompt"),
         "language_hint_mode": first_request.get("language_hint_mode"),
         "temperature": first_request.get("temperature"),
+        "target_streaming_delay_ms": first_request.get("target_streaming_delay_ms"),
         "startup_seconds": startup_seconds,
         "gpu_snapshot": gpu_snapshot,
         "first_request": first_request,
@@ -634,13 +677,16 @@ def main() -> int:
     from voxtral_project.reporting import get_git_head_sha, normalization_version
 
     args = parse_args()
+    config_arg = args.config or (MODE_CONFIGS[args.mode] if args.mode else None)
+    if config_arg is None:
+        raise ValueError("Provide either --config or --mode {bf16,fp8}.")
 
     base_url = f"http://127.0.0.1:{args.port}/v1"
     report_dir = PROJECT_ROOT / "reports"
     log_dir = PROJECT_ROOT / "logs"
     report_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
-    config_path = Path(args.config)
+    config_path = Path(config_arg)
     if not config_path.is_absolute():
         config_path = PROJECT_ROOT / config_path
     config_sha256 = file_sha256(config_path)
@@ -662,7 +708,7 @@ def main() -> int:
                 "bash",
                 "scripts/start_vllm_server.sh",
                 args.model_path,
-                args.config,
+                config_arg,
                 str(args.port),
             ],
             cwd=PROJECT_ROOT,
@@ -701,6 +747,7 @@ def main() -> int:
                 prompt=args.prompt,
                 language_hint_mode=args.language_hint_mode,
                 temperature=args.temperature,
+                target_streaming_delay_ms=args.target_streaming_delay_ms,
                 gate_silence=args.gate_silence,
                 vad_trim=args.vad_trim,
                 vad_aggressiveness=args.vad_aggressiveness,
@@ -722,6 +769,7 @@ def main() -> int:
                 prompt=args.prompt,
                 language_hint_mode=args.language_hint_mode,
                 temperature=args.temperature,
+                target_streaming_delay_ms=args.target_streaming_delay_ms,
                 gate_silence=args.gate_silence,
                 vad_trim=args.vad_trim,
                 vad_aggressiveness=args.vad_aggressiveness,
@@ -745,6 +793,7 @@ def main() -> int:
                     prompt=args.prompt,
                     language_hint_mode=args.language_hint_mode,
                     temperature=args.temperature,
+                    target_streaming_delay_ms=args.target_streaming_delay_ms,
                     gate_silence=args.gate_silence,
                     vad_trim=args.vad_trim,
                     vad_aggressiveness=args.vad_aggressiveness,
@@ -768,7 +817,7 @@ def main() -> int:
                 summary = build_failed_summary(
                     label=args.label,
                     model_path=args.model_path,
-                    config_path=args.config,
+                    config_path=config_arg,
                     base_url=base_url,
                     served_model=served_model,
                     startup_seconds=startup_seconds,
@@ -781,6 +830,7 @@ def main() -> int:
                     energy_report=energy_report,
                     log_path=log_path,
                 )
+                summary["mode"] = args.mode
                 write_json(summary_report, summary)
                 print(f"Benchmark summary written to: {summary_report.resolve()}")
                 print(json.dumps(summary, indent=2, ensure_ascii=False))
@@ -789,7 +839,7 @@ def main() -> int:
             summary = build_summary(
                 label=args.label,
                 model_path=args.model_path,
-                config_path=args.config,
+                config_path=config_arg,
                 base_url=base_url,
                 served_model=served_model,
                 startup_seconds=startup_seconds,
@@ -802,6 +852,7 @@ def main() -> int:
                 warmup_report=warmup_report,
                 log_path=log_path,
             )
+            summary["mode"] = args.mode
             write_json(summary_report, summary)
             print(f"Benchmark summary written to: {summary_report.resolve()}")
             print(json.dumps(summary, indent=2, ensure_ascii=False))

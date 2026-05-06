@@ -72,6 +72,15 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional sampling temperature for the vLLM API backend. The model card recommends 0.0.",
     )
+    parser.add_argument(
+        "--target-streaming-delay-ms",
+        type=int,
+        default=None,
+        help=(
+            "Optional Voxtral Realtime target delay tau in milliseconds. "
+            "Defaults to the served model's configured delay."
+        ),
+    )
     parser.add_argument("--max-tokens", type=int, default=1000, help="Max output tokens.")
     parser.add_argument(
         "--empty-retry-count",
@@ -255,6 +264,8 @@ def evaluate_language(
     empty_prediction_count = 0
     empty_retry_sample_count = 0
     empty_retry_request_count = 0
+    total_hyp_chars = 0
+    total_ref_chars = 0
     latency_total_seconds: list[float] = []
 
     for index, sample in enumerate(fleurs):
@@ -306,6 +317,10 @@ def evaluate_language(
         reference = get_sample_text(sample)
         normalized_reference = normalize_asr_text(reference)
         normalized_prediction = normalize_asr_text(prediction)
+        hyp_chars = len(prediction)
+        ref_chars = len(reference)
+        total_hyp_chars += hyp_chars
+        total_ref_chars += ref_chars
         is_empty_prediction = not prediction.strip()
         if is_empty_prediction:
             empty_prediction_count += 1
@@ -318,6 +333,8 @@ def evaluate_language(
                 "id": sample_id,
                 "reference": reference,
                 "prediction": prediction,
+                "hyp_chars": hyp_chars,
+                "ref_chars": ref_chars,
                 "wer_raw": word_error_rate(reference, prediction),
                 "wer_normalized": word_error_rate(normalized_reference, normalized_prediction),
                 "cer_normalized_no_whitespace": character_error_rate_no_whitespace(
@@ -397,10 +414,19 @@ def evaluate_language(
         predictions=predictions,
         lang_code=lang_code,
     )
+    verbosity_ratio = total_hyp_chars / total_ref_chars if total_ref_chars else None
+    verbosity_drift_warning = (
+        verbosity_ratio is not None and not (0.95 <= verbosity_ratio <= 1.05)
+    )
     return {
         "language": lang_code,
         "dataset_source": dataset_source,
         "samples_evaluated": len(samples),
+        "hyp_chars_total": total_hyp_chars,
+        "ref_chars_total": total_ref_chars,
+        "verbosity_ratio": verbosity_ratio,
+        "verbosity_drift_warning": verbosity_drift_warning,
+        "verbosity_drift_warning_range": [0.95, 1.05],
         "empty_prediction_count": empty_prediction_count,
         "empty_retry_sample_count": empty_retry_sample_count,
         "empty_retry_request_count": empty_retry_request_count,
@@ -450,6 +476,7 @@ def main() -> int:
         prompt=args.prompt,
         language_hint_mode=args.language_hint_mode,
         temperature=args.temperature,
+        target_streaming_delay_ms=args.target_streaming_delay_ms,
         max_tokens=args.max_tokens,
         hf_model_id=args.hf_model_id,
         hf_device=args.hf_device,
@@ -488,6 +515,7 @@ def main() -> int:
         "harness_version": HARNESS_VERSION,
         "backend": args.backend,
         "backend_details": transcriber.describe(),
+        "target_streaming_delay_ms": args.target_streaming_delay_ms,
         "limit_per_language": args.limit,
         "speech_gating": {
             "enabled": args.gate_silence,
@@ -506,6 +534,18 @@ def main() -> int:
         },
         "empty_retry_count": args.empty_retry_count,
         "results": results,
+        "verbosity_drift_warnings": [
+            {
+                "language": result["language"],
+                "dataset_source": result.get("dataset_source"),
+                "verbosity_ratio": result.get("verbosity_ratio"),
+                "hyp_chars_total": result.get("hyp_chars_total"),
+                "ref_chars_total": result.get("ref_chars_total"),
+                "warning_range": result.get("verbosity_drift_warning_range"),
+            }
+            for result in results
+            if result.get("verbosity_drift_warning")
+        ],
     }
     attach_measurement_contract(
         payload,
