@@ -246,6 +246,11 @@ compression next, then move into more aggressive decoder quantization.
 
 ## Most Useful Docs Right Now
 
+- `docs/round2_track_plan.md` &mdash; **master plan** for Round-2 tracks D, E, F, L4 with
+  per-track venvs, kill switches, and decision gates.
+- `docs/round2_candidate_snapshot.md` &mdash; current locked Round-2 candidate (audio lever,
+  validated on 13 FLEURS languages on RTX 5080) and the L4 handoff briefing.
+- `docs/round2_audio_lever.md` &mdash; rationale for the locked audio-prep stack.
 - `docs/submission_candidate_summary.md`
 - `docs/submission_readiness_checklist.md`
 - `docs/submission_benchmark_table.md`
@@ -253,6 +258,129 @@ compression next, then move into more aggressive decoder quantization.
 - `docs/fp8_mainline_track.md`
 - `docs/gptq_track_summary.md`
 - `docs/decoder_skipping_track.md`
+
+## Round-2 Status (2026-05-08, end of session)
+
+### Track A++ (audio lever) &mdash; LOCKED
+Pinned audio-prep stack on top of Track A FP8:
+
+```
+--target-lufs -23.0 --lufs-max-gain-db 24.0
+--vad-trim --vad-aggressiveness 1 --vad-padding-ms 200
+--gate-silence
+--compress-internal-silence-to-ms 160      # tightened from 320 in afternoon ablation
+--min-internal-silence-run-ms 320          # tightened from 640
+```
+
+Validated on RTX 5080 across all 13 Voxtral-supported FLEURS languages at limit=100 (EN at
+limit=500), zero empty predictions across 1700 samples. Energy total: **283.20 kJ** for the
+4-language Track A canonical set on RTX 5080 (relative; binding L4 measurement still pending).
+
+| Slice | norm WER | CER (no_ws) | empty | trim% | RTX 5080 kJ |
+|---|---|---|---|---|---|
+| es_419 (100) | **3.01%** | 5.33% | 0 | 14.71% | 30.32 |
+| it_it (100) | **3.74%** | 5.95% | 0 | 15.70% | 46.63 |
+| ru_ru (100) | **5.18%** | 6.04% | 0 | 12.17% | 26.96 |
+| pt_br (100) | **5.29%** | 6.99% | 0 | 14.47% | 36.79 |
+| de_de (100) | **5.64%** | 10.19% | 0 | 14.09% | 40.70 |
+| en_us (500) | 5.69% | 7.90% | 0 | 12.59% | 129.79 |
+| fr_fr (100) | 7.36% | 7.49% | 0 | 19.81% | 24.75 |
+| nl_nl (100) | 8.71% | 7.52% | 0 | 11.22% | 27.68 |
+| ar_eg (100) | 15.70% | 5.82% | 0 | 8.86% | 39.15 |
+| ko_kr (100) | 16.02% | 8.72% | 0 | **27.20%** | 23.37 |
+| hi_in (100) | 26.12% | 14.76% | 0 | 7.16% | 34.60 |
+| ja_jp (100) | (WER moot) | **10.51%** | 0 | 14.83% | 44.52 |
+| cmn_hans_cn (100) | (WER moot) | **12.41%** | 0 | **25.93%** | 25.90 |
+
+Reports: `reports/fleurs_fp8_<lang>_limit{100,500}_lufs23_vadgate160_320_smoke.json`.
+
+### Track B (SpinQuant W4A16 via llmcompressor) &mdash; DROPPED
+Three different llmcompressor blockers (norm-fusion assertion, block-size mismatch, CUDA
+index-OOB). Even plain GPTQ failed in the patched venv. See team_status.md and
+`docs/round2_track_plan.md` for the full timeline.
+
+### Track D1 (AutoRound W4A16) &mdash; PARTIALLY ALIVE, blocked on vLLM kernel side
+
+What works:
+- `~/.venvs/voxtral-trackd-autoround` venv (transformers 5.5.4 + auto-round 0.12.3)
+  loads Voxtral cleanly. AutoRound v4 smoke quantized 234/235 modules in 44 s,
+  packed 26 decoder layers x 7 projections = 234 modules in `auto_round:auto_gptq` format.
+  Output size 2.27 GB (decoder only) vs 8.86 GB BF16; matches expected W4A16 ratio.
+- `merge_autoround_into_voxtral.py` script splices the W4 decoder back into the original
+  BF16 Voxtral checkpoint (audio_tower + multi_modal_projector kept BF16). Output 4.07 GB,
+  patches `quant_method: auto-round -> gptq` in config.
+- `~/.venvs/voxtral-trackd-serve` venv (vllm 0.19.1rc1.dev302 + transformers 5.5.4 force-installed
+  with --no-deps + TORCH_INIT_FUNCTIONS shim). Loads the merged checkpoint, recognizes the
+  architecture, accepts `--quantization gptq_marlin --dtype half`.
+
+Where it's stuck:
+- vLLM 0.19.1rc1's dedicated `voxtral_realtime.py` impl has **zero quantization references
+  in source** &mdash; it can serve BF16 / FP8 KV but not GPTQ-prequantized weights.
+- When `quantization_config` is present in config.json, vLLM falls back to
+  `TransformersMultiModalForCausalLM` (the generic transformers backend), which assumes
+  **images** (`return {"image": self.get_max_image_tokens()}`) and crashes loading the
+  Voxtral audio processor.
+- This is the actual architecture wall: vLLM has GPTQ for text models, audio for Voxtral,
+  but no overlap.
+
+Three forward paths from here (in `docs/round2_track_plan.md`):
+1. Patch vLLM's `voxtral_realtime.py` to use parameterized linear factories from
+   `vllm.model_executor.layers.linear` (which auto-handle GPTQ via QuantizationConfig).
+2. Use `--model-impl vllm` to force the dedicated impl + see if it transparently handles
+   GPTQ packed weights (probably not, but worth a 1-hour test).
+3. Pivot to a non-vLLM serving stack (TGI, SGLang, or transformers + GPTQModel).
+
+### Track E (EAGLE-3 spec decode) &mdash; UNTESTED
+`~/.venvs/voxtral-tracke-eagle` is built. vLLM 0.19.1rc1 has `v1/spec_decode/eagle.py` and
+`v1/worker/gpu/spec_decode/eagle/` so the kernel side exists. The smoke gate (does
+`--speculative-config` route through `/v1/audio/transcriptions`?) hasn't been run yet.
+
+## New Tooling This Session
+
+- `~/models/voxtral-realtime/` &mdash; Voxtral relocated to native ext4. Loads in 0.6 s vs
+  ~120 s from `/mnt/c` (9P).
+- `~/.venvs/voxtral-trackd-autoround/` &mdash; AutoRound calibration venv.
+- `~/.venvs/voxtral-tracke-eagle/` &mdash; EAGLE serving venv.
+- `~/.venvs/voxtral-trackd-serve/` &mdash; vLLM 0.19 + transformers 5.5.4 force-pinned for
+  serving quantized Voxtral.
+- `scripts/run_round2_multilingual_sweep.sh`
+- `scripts/reproduce_round2_audio.sh`
+- `scripts/summarize_round2_audio_runs.py` (now supports `--full-fleurs`)
+- `.claude/worktrees/.../merge_autoround_into_voxtral.py` &mdash; W4-decoder + BF16-audio splice.
+- `.claude/worktrees/.../probe_autoround_smoke_v4.py` &mdash; AutoRound smoke with t_cond hook.
+- `configs/vllm/track_d1_w4a16_autoround_smoke.yaml`
+
+## Resume points (next session)
+
+**2026-05-12 update**: Two more big steps cleared this session:
+
+- **Track E1 (EAGLE-3 spec-decode) is ALIVE** — proven that vLLM's
+  `--speculative-config` plumbs through `/v1/audio/transcriptions`. EAGLE-3
+  needs a trained draft (Track E2), but the architectural path is open.
+- **Track D1 (AutoRound W4 + vLLM serve)** cleared **9 of 10** walls. Wall #10:
+  vLLM's GPTQ weight loader doesn't apply the runtime `attention_norm ->
+  self_attn_layer_norm` rename that the BF16 path uses for the audio encoder.
+  Fixing this means patching `vllm/model_executor/models/voxtral.py` to define
+  a `stacked_params_mapping` / `packed_modules_mapping` for the audio encoder.
+  Estimated 4-8 hours focused work.
+
+Five workstreams now teed up for parallel threads:
+
+1. **Track D1 wall #10**: patch vLLM `voxtral.py` audio encoder
+   `packed_modules_mapping`. Or pre-rename audio encoder norm keys in our final
+   checkpoint to match Whisper-internal names directly. Last attempted serve in
+   `~/voxtral-w4a16-final-smoke/` with config in
+   `configs/vllm/track_d1_w4a16_autoround_smoke.yaml`. Full wall-by-wall log in
+   `reports/team_status.md` 2026-05-12 entry.
+2. **Track E2**: train/wire EAGLE-3 draft model for Voxtral's text decoder.
+3. **L4 cloud provisioning**: prerequisite for any binding energy claim. Run
+   `scripts/reproduce_round2_audio.sh` against it for the locked
+   Track A++ candidate immediately, regardless of D1/E2 progress.
+4. **Send organizer email** about HI id 1985 idx 82 duplicate (drafted in
+   `reports/sample_1985_investigation/hi_1985_findings.md`).
+5. **Optional**: write `dequantize_ada_rms_norm` step into the AutoRound runner
+   so future smoke runs don't need the post-hoc restore (small quality-of-life
+   improvement on Track D1 iteration cycle).
 
 ## What Is Intentionally Missing
 

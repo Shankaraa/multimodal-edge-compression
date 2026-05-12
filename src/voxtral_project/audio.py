@@ -370,6 +370,71 @@ def gate_audio_by_activity(
     return gated, diagnostics
 
 
+def _apply_lufs_normalization(
+    audio_array: Any,
+    sample_rate: int,
+    *,
+    target_lufs: float,
+    max_gain_db: float = 24.0,
+    min_gated_seconds: float = 0.4,
+) -> tuple[Any, dict[str, float | bool | None]]:
+    """ITU-R BS.1770-4 integrated-loudness normalization (pyloudnorm).
+
+    Robust on quiet inputs because BS.1770 includes absolute and relative gating
+    that excludes silence, so a clip dominated by silence with a brief speech
+    burst is normalized by the speech burst's loudness, not the silent floor.
+    Falls back to no-op when the clip is shorter than the BS.1770 gating window
+    (0.4 s) or pyloudnorm reports -inf integrated loudness.
+    """
+    import numpy as np
+
+    diagnostics: dict[str, float | bool | None] = {
+        "lufs_normalization_applied": True,
+        "lufs_target": float(target_lufs),
+        "lufs_max_gain_db": float(max_gain_db),
+        "lufs_integrated_before": None,
+        "lufs_gain_db": 0.0,
+        "lufs_changed_audio": False,
+    }
+
+    duration_seconds = float(audio_array.size / sample_rate) if sample_rate else 0.0
+    if duration_seconds < min_gated_seconds:
+        return audio_array, diagnostics
+
+    try:
+        import pyloudnorm as pyln
+    except ImportError:
+        diagnostics["lufs_normalization_applied"] = False
+        return audio_array, diagnostics
+
+    meter = pyln.Meter(sample_rate)  # ITU-R BS.1770-4
+    integrated = float(meter.integrated_loudness(audio_array))
+    diagnostics["lufs_integrated_before"] = integrated
+
+    if not math.isfinite(integrated):
+        return audio_array, diagnostics
+
+    gain_db = float(target_lufs - integrated)
+    clipped_gain_db = max(-max_gain_db, min(max_gain_db, gain_db))
+    gain_linear = 10.0 ** (clipped_gain_db / 20.0)
+
+    out = np.clip(audio_array * gain_linear, -1.0, 1.0).astype(np.float32, copy=False)
+    diagnostics["lufs_gain_db"] = clipped_gain_db
+    diagnostics["lufs_changed_audio"] = bool(abs(clipped_gain_db) > 1e-3)
+    return out, diagnostics
+
+
+def _empty_lufs_diagnostics(target_lufs: float | None) -> dict[str, float | bool | None]:
+    return {
+        "lufs_normalization_applied": False,
+        "lufs_target": float(target_lufs) if target_lufs is not None else None,
+        "lufs_max_gain_db": 0.0,
+        "lufs_integrated_before": None,
+        "lufs_gain_db": 0.0,
+        "lufs_changed_audio": False,
+    }
+
+
 def prepare_audio_array_for_transcription(
     audio_array: Any,
     sample_rate: int,
@@ -377,6 +442,8 @@ def prepare_audio_array_for_transcription(
     quiet_peak_threshold: float = 0.01,
     target_peak: float = 0.02,
     max_gain: float = 8.0,
+    target_lufs: float | None = None,
+    lufs_max_gain_db: float = 24.0,
     gate_silence: bool = False,
     vad_trim: bool = False,
     vad_aggressiveness: int = 1,
@@ -394,6 +461,7 @@ def prepare_audio_array_for_transcription(
     prepared = _as_mono_float32_audio(audio_array)
 
     if prepared.size == 0:
+        empty_lufs = _empty_lufs_diagnostics(target_lufs)
         return prepared, {
             "duration_seconds": 0.0,
             "rms_before": 0.0,
@@ -402,6 +470,7 @@ def prepare_audio_array_for_transcription(
             "peak_abs_after": 0.0,
             "gain_applied": 1.0,
             "quiet_audio_boosted": False,
+            **empty_lufs,
             "vad_trim_applied": bool(vad_trim),
             "vad_trim_changed_audio": False,
             "vad_trim_duration_before_seconds": 0.0,
@@ -432,10 +501,26 @@ def prepare_audio_array_for_transcription(
     rms_before = float(math.sqrt(float(np.mean(np.square(prepared.astype(np.float64))))))
     duration_seconds = float(prepared.size / sample_rate) if sample_rate else 0.0
 
+    if target_lufs is not None:
+        prepared, lufs_diagnostics = _apply_lufs_normalization(
+            prepared,
+            sample_rate,
+            target_lufs=target_lufs,
+            max_gain_db=lufs_max_gain_db,
+        )
+        # NOTE: do not overwrite `peak_before` here. The diagnostic is the input
+        # peak, before any preprocessing. The quiet-boost decision below uses
+        # the post-LUFS peak via a separate local; LUFS already covers the
+        # quiet-clip case, so quiet-boost almost never fires when LUFS is on.
+        peak_for_quiet_boost = float(np.max(np.abs(prepared)))
+    else:
+        lufs_diagnostics = _empty_lufs_diagnostics(target_lufs)
+        peak_for_quiet_boost = peak_before
+
     gain = 1.0
     boosted = False
-    if 0.0 < peak_before < quiet_peak_threshold:
-        gain = min(max_gain, target_peak / peak_before)
+    if 0.0 < peak_for_quiet_boost < quiet_peak_threshold:
+        gain = min(max_gain, target_peak / peak_for_quiet_boost)
         if gain > 1.0:
             prepared = np.clip(prepared * gain, -1.0, 1.0)
             boosted = True
@@ -508,6 +593,7 @@ def prepare_audio_array_for_transcription(
         "gain_applied": gain,
         "quiet_audio_boosted": boosted,
     }
+    diagnostics.update(lufs_diagnostics)
     diagnostics.update(vad_diagnostics)
     diagnostics.update(gating_diagnostics)
     return prepared, diagnostics

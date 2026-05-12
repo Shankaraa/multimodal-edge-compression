@@ -107,6 +107,21 @@ def parse_args() -> argparse.Namespace:
         help="Maximum gain multiplier used for quiet-sample boosting.",
     )
     parser.add_argument(
+        "--target-lufs",
+        type=float,
+        default=None,
+        help=(
+            "If set, apply ITU-R BS.1770-4 integrated-loudness normalization to this LUFS target "
+            "(e.g. -23.0 for EBU R128, -16.0 for streaming) before any other audio prep."
+        ),
+    )
+    parser.add_argument(
+        "--lufs-max-gain-db",
+        type=float,
+        default=24.0,
+        help="Cap on LUFS-normalization gain in dB to avoid amplifying artifacts on near-silent clips.",
+    )
+    parser.add_argument(
         "--gate-silence",
         action="store_true",
         help="Apply speech-aware silence gating before transcription.",
@@ -225,6 +240,8 @@ def evaluate_language(
     quiet_audio_peak_threshold: float,
     quiet_audio_target_peak: float,
     max_audio_gain: float,
+    target_lufs: float | None,
+    lufs_max_gain_db: float,
     gate_silence: bool,
     vad_trim: bool,
     vad_aggressiveness: int,
@@ -278,6 +295,8 @@ def evaluate_language(
             quiet_peak_threshold=quiet_audio_peak_threshold,
             target_peak=quiet_audio_target_peak,
             max_gain=max_audio_gain,
+            target_lufs=target_lufs,
+            lufs_max_gain_db=lufs_max_gain_db,
             gate_silence=gate_silence,
             vad_trim=vad_trim,
             vad_aggressiveness=vad_aggressiveness,
@@ -354,6 +373,28 @@ def evaluate_language(
                 "audio_rms_after": round(float(audio_diagnostics["rms_after"]), 6),
                 "audio_gain_applied": round(float(audio_diagnostics["gain_applied"]), 6),
                 "quiet_audio_boosted": bool(audio_diagnostics["quiet_audio_boosted"]),
+                "lufs_normalization_applied": bool(
+                    audio_diagnostics.get("lufs_normalization_applied", False)
+                ),
+                "lufs_target": (
+                    float(audio_diagnostics["lufs_target"])
+                    if audio_diagnostics.get("lufs_target") is not None
+                    else None
+                ),
+                "lufs_max_gain_db": float(
+                    audio_diagnostics.get("lufs_max_gain_db", 0.0) or 0.0
+                ),
+                "lufs_integrated_before": (
+                    round(float(audio_diagnostics["lufs_integrated_before"]), 6)
+                    if audio_diagnostics.get("lufs_integrated_before") is not None
+                    else None
+                ),
+                "lufs_gain_db": round(
+                    float(audio_diagnostics.get("lufs_gain_db", 0.0) or 0.0), 6
+                ),
+                "lufs_changed_audio": bool(
+                    audio_diagnostics.get("lufs_changed_audio", False)
+                ),
                 "vad_trim_applied": bool(audio_diagnostics["vad_trim_applied"]),
                 "vad_trim_changed_audio": bool(audio_diagnostics["vad_trim_changed_audio"]),
                 "vad_trim_duration_before_seconds": round(
@@ -492,6 +533,8 @@ def main() -> int:
             quiet_audio_peak_threshold=args.quiet_audio_peak_threshold,
             quiet_audio_target_peak=args.quiet_audio_target_peak,
             max_audio_gain=args.max_audio_gain,
+            target_lufs=args.target_lufs,
+            lufs_max_gain_db=args.lufs_max_gain_db,
             gate_silence=args.gate_silence,
             vad_trim=args.vad_trim,
             vad_aggressiveness=args.vad_aggressiveness,
