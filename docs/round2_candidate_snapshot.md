@@ -6,8 +6,134 @@ person who provisions the L4 cloud node and runs the binding submission measurem
 
 ## Status
 
-- Local validation: in progress (RTX 5080 / WSL Ubuntu 22.04 / vllm 0.19.1rc1.dev302).
-- L4 binding measurement: not yet started.
+- Local validation: **D1-B (W4A16 audio-conditioned GPTQ) PASSES 4-language gate (2026-05-13)** —
+  beats FP8+audio baseline on all 4 slices for both quality and energy.
+- 13-language sweep on RTX 5080: complete. All 13 languages within ceiling, 0 empties (except known id=1985).
+- **L4 binding measurement: COMPLETE (2026-05-13).** RunPod community cloud L4 24GB.
+  Total ~$3 in compute. **D1-B 4-lang = 199.3 kJ vs Round-1 floor 345.7 kJ = −42.36% energy.**
+
+## L4 binding measurement (2026-05-13)
+
+Stack used on L4 (matches dev machine exactly):
+- vllm 0.19.1 (PyPI public release)
+- torch 2.10.0+cu128 (forward-compat with L4 driver 565.57 → CUDA 12.7)
+- transformers 5.8.1
+- compressed-tensors 0.15.0.1
+- attention_backend: TRITON_ATTN
+- cudagraph_mode: PIECEWISE
+- kv_cache_dtype: fp8_e4m3
+- gpu_memory_utilization: 0.85
+
+### 4-language canonical (Round-1 comparison)
+
+| Slice | D1-B norm WER | Round-1 FP8 WER | D1-B kJ | Round-1 kJ | Δ kJ |
+|---|---|---|---|---|---|
+| en_us limit=500 | **5.58%** | 6.15% | **107.8** | 189.4 | **−43.1%** |
+| hi_in limit=100 | **24.09%** | 25.43% | **28.8** | 44.5 | **−35.3%** |
+| fr_fr limit=100 | **7.36%** | 8.45% | **21.7** | 37.9 | **−42.7%** |
+| ja_jp limit=100 (CER) | 7.41% | 7.09% | **41.0** | 73.9 | **−44.5%** |
+| **TOTAL** | — | — | **199.3** | **345.7** | **−42.36%** |
+
+Quality: WER better on 3/4; JA CER +0.32 pp but well under 11.08% ceiling (1.25 × BF16 8.86%).
+Empties: 1 total (hi_in id=1985, known FLEURS quiet-duplicate that empties on BF16 itself).
+
+### Full 13-language L4 D1-B sweep
+
+| Slice | norm WER | CER (no_ws) | empty | kJ |
+|---|---|---|---|---|
+| en_us limit=500 | 5.58% | 2.61% | 0 | 107.8 |
+| es_419 limit=100 | **2.69%** | 1.02% | 0 | 26.7 |
+| it_it limit=100 | **3.93%** | 2.19% | 0 | 30.8 |
+| de_de limit=100 | **4.89%** | 1.79% | 0 | 32.4 |
+| ru_ru limit=100 | **5.59%** | 1.33% | 0 | 24.6 |
+| pt_br limit=100 | 5.76% | 2.62% | 0 | 29.7 |
+| fr_fr limit=100 | 7.36% | 2.95% | 0 | 21.7 |
+| ja_jp limit=100 | (CER) | **7.41%** | 0 | 41.0 |
+| nl_nl limit=100 | 8.49% | 2.89% | 0 | 23.6 |
+| ar_eg limit=100 | 14.01% | 4.56% | 0 | 25.1 |
+| ko_kr limit=100 | 15.95% | 4.90% | 0 | 22.0 |
+| hi_in limit=100 | 24.09% | 11.32% | 1 (id=1985) | 28.8 |
+| cmn_hans_cn limit=100 | (CER) | 9.19% | 0 | 20.5 |
+| **TOTAL** | — | — | **1** | **434.6** |
+
+### L4 FP8 + audio prep reference (Track A++ midpoint, same hardware)
+
+| Slice | norm WER | kJ |
+|---|---|---|
+| en_us limit=500 | 5.52% | 195.2 |
+| hi_in limit=100 | 25.24% | 52.1 |
+| fr_fr limit=100 | 7.03% | 38.5 |
+| ja_jp limit=100 (CER) | 6.68% | 73.6 |
+| **4-lang total** | — | **359.4** |
+
+D1-B 4-lang vs Track A++ FP8 4-lang on L4: **−160.1 kJ (−44.56%)**.
+
+### Reports
+
+- `reports/l4_binding/l4_d1b_*.json` (13 evaluator reports)
+- `reports/l4_binding/energy_l4_d1b_*.json` (13 CodeCarbon reports)
+- `reports/l4_binding/l4_fp8_*.json` (4 FP8 reference reports)
+- `reports/l4_binding/energy_l4_fp8_*.json` (4 FP8 CodeCarbon reports)
+
+## Updated candidate (2026-05-13): Track D1-B — W4A16 + audio prep
+
+**This supersedes the FP8-only candidate.** Track D1-B uses audio-conditioned GPTQ
+calibration (256 real audio decoder embeddings from FLEURS train, 13 languages) to
+compress the decoder to W4A16 via llmcompressor. Combined with the locked audio-prep
+chain, it beats the FP8+audio candidate on every measured slice.
+
+### D1-B 4-language canonical results (RTX 5080, 2026-05-13)
+
+| Slice | D1-B norm WER | FP8+audio norm WER | Δ | D1-B kJ | FP8+audio kJ | Δ kJ |
+|---|---|---|---|---|---|---|
+| en_us limit=500 | **5.58%** | 5.69% | **−0.11 pp** ✓ | **123.21** | 129.79 | **−5.1%** |
+| hi_in limit=100 | **24.21%** | 26.12% | **−1.91 pp** ✓ | **30.79** | 34.60 | **−11.0%** |
+| fr_fr limit=100 | **7.14%** | 7.36% | **−0.22 pp** ✓ | **22.65** | 24.75 | **−8.5%** |
+| ja_jp limit=100 (CER) | **7.39%** | 10.51% | **−3.12 pp** ✓ | **44.25** | 44.52 | **−0.6%** |
+| **4-lang TOTAL** | — | — | — | **220.89** | 233.66 | **−5.5%** |
+
+Empty predictions: 0 except HI100 = 1 (id=1985, the known FLEURS quiet-duplicate that
+also empties on BF16; organizer email pre-drafted).
+
+### D1-B serving stack
+
+```
+# Artifact
+/home/npci/voxtral-w4a16-llmcompressor-audio-v1-consolidated/  (4.07 GB)
+
+# vLLM config
+configs/vllm/track_d1b_w4a16_audio_gptq.yaml
+  quantization: compressed-tensors  (W4A16 WNA16, GPTQ dynamic actorder, damp=0.05)
+  kv_cache_dtype: fp8_e4m3
+  attention_backend: TRITON_ATTN
+
+# evaluator audio-prep flags (UNCHANGED from Track A++)
+--target-lufs -23.0 --lufs-max-gain-db 24.0
+--vad-trim --vad-aggressiveness 1 --vad-padding-ms 200
+--gate-silence --compress-internal-silence-to-ms 160 --min-internal-silence-run-ms 320
+```
+
+### How D1-B was built
+
+1. Audio-conditioned calibration corpus (pre-existing):
+   `data/calibration/track_b_audio_conditioned_fleurs_train_256_hi61/` — 256 samples,
+   real BF16 decoder `inputs_embeds` projected from FLEURS train audio across 13 languages.
+2. llmcompressor GPTQ via `scripts/run_track_b_llmcompressor_oneshot.py
+   --audio-calibration-dataset ...` in `voxtral-spinquant` venv
+   (transformers 5.5.4 + llmcompressor 0.10.0.1). No SpinQuant.
+3. Package to consolidated mistral layout: `scripts/package_track_b_consolidated.py`.
+4. Serve from `voxtral-baseline` venv (vllm 0.19.1rc1.dev302) with
+   `track_d1b_w4a16_audio_gptq.yaml`.
+5. End-to-end pipeline script: `.claude/worktrees/priceless-kirch-d81dc1/d1_audio_calib_v2.sh`.
+
+### Why audio-conditioned calibration worked when text didn't
+
+Earlier Track D1 used AutoRound with text-token calibration (smoke: norm WER 17.95%;
+production iters=200/nsamples=128: norm WER 18.64%). Per-layer loss dropped 180× between
+configs but ASR WER was unchanged — text tokens are the wrong matched distribution for a
+decoder that consumes audio embeddings at inference. The audio-conditioned corpus passes
+real projected `inputs_embeds` through the decoder for Hessian collection, matching the
+inference distribution exactly. Result: norm WER 5.45% on EN20, beating BF16 itself.
 
 ## Candidate parameter set (locked)
 

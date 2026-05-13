@@ -946,3 +946,66 @@ Copy this block for a new workstream entry:
   2. Dev machine: run d1_audio_calib_v2.sh. Gate: norm WER <= 7.95% EN20.
   3. If B passes: scale to EN500 + multilingual. If B fails: ship Path A only.
 - Last updated: 2026-05-12 19:00 IST
+
+## 2026-05-13
+
+#### Workstream: Track D1-B audio-conditioned GPTQ — NEW CANDIDATE
+- Owner: cross-domain research thread
+- Status: in_progress (4-lang done, 9-lang sweep running)
+- Moved:
+  - Ran d1_audio_calib_v2.sh (with fixes from morning):
+    - Removed AutoProcessor dependency (mistral-common not in spinquant venv;
+      processor=tokenizer is fine since collator loads tensors from disk).
+    - Fixed dataset path: load_from_disk uses processor_dataset/ subdir; collator
+      root stays as top-level corpus dir.
+    - Fixed serve venv: must source voxtral-baseline (has vllm), not spinquant.
+    - Tightened skip-if-exists guards to require actual safetensors.
+  - Calibration succeeded: 27/27 decoder layers, 256 audio samples, 4.1 GB artifact
+    at /home/npci/voxtral-w4a16-llmcompressor-audio-v1-consolidated/.
+  - EN20 quality smoke: norm WER 5.45% (ceiling 7.95%, BF16 6.36%). EXCELLENT PASS.
+  - 4-language canonical sweep on RTX 5080:
+    | Slice  | D1-B norm WER | FP8+audio | Delta     | kJ Delta |
+    |--------|---------------|-----------|-----------|----------|
+    | EN500  | 5.58%         | 5.69%     | -0.11 pp  | -5.1%    |
+    | HI100  | 24.21%        | 26.12%    | -1.91 pp  | -11.0%   |
+    | FR100  | 7.14%         | 7.36%     | -0.22 pp  | -8.5%    |
+    | JA100  | CER 7.39%     | CER 10.51%| -3.12 pp  | -0.6%    |
+    | TOTAL  | -             | -         | all wins  | -5.5%    |
+  - 1 HI empty = id=1985 (the known FLEURS quiet-duplicate; empties on BF16 too).
+- Decisions:
+  - D1-B SUPERSEDES the FP8-only candidate as the Round-2 submission.
+  - Continue with 9-language extension sweep to confirm generalization.
+  - L4 binding measurement now targets D1-B (not FP8-only).
+- Blockers: none.
+- Next:
+  1. 9-language extension sweep on D1-B server (running, ~30 min).
+  2. If holds: update reproduce script + L4 setup to point at D1-B artifact + config.
+  3. Provision L4 and run binding measurement on D1-B.
+- Last updated: 2026-05-13 12:30 IST
+
+## 2026-05-13 (L4 binding complete)
+
+#### Workstream: L4 binding measurement on D1-B - DONE
+- Owner: cross-domain research thread
+- Status: done
+- Moved:
+  - Provisioned RunPod community cloud L4 (24 GB, driver 565.57, CUDA 12.7).
+  - Solved a chain of compat issues:
+    - vllm latest (0.20.2) needs cu130, L4 driver maxes at cu127 -> driver too old.
+    - vllm 0.10.2 with cu128 works on driver but has NO Voxtral Realtime support (falls through to generic TransformersForMultimodalLM, fails to find audio_tower).
+    - vllm 0.19.1 (public PyPI release matching dev machine pinned dev build) + torch 2.10+cu128 + compressed-tensors 0.15.0.1 + TRITON_ATTN + cudagraph PIECEWISE = ALL WORK on driver 565.
+  - Pushed D1-B 4.1 GB artifact to HF (Shankara-A-S/voxtral-mini-realtime-w4a16-audio-runtime, private gated).
+  - Initial push was the Mistral consolidated layout (which vllm 0.10.2 couldnt parse); switching to vllm 0.19.1 made the consolidated layout work natively.
+  - **L4 D1-B 4-lang total: 199.3 kJ (-42.36% vs Round-1 Track A FP8 floor 345.7 kJ)**.
+  - **L4 D1-B 13-lang total: 434.6 kJ, 1 empty (HI id=1985, known issue)**.
+  - L4 FP8 + audio prep reference: 359.4 kJ (4-lang), +3.95% over Round-1 floor (audio-prep CPU overhead offsets audio-trim savings on L4 fast encoder; D1-B W4A16 is what delivers the energy win).
+- Decisions:
+  - **D1-B IS THE ROUND-2 SUBMISSION CANDIDATE.** Energy reduction validated on L4.
+  - Quality: norm WER better than Round-1 on EN/HI/FR; JA CER within ceiling.
+- Blockers: none.
+- Cost: ~ of  budget used.
+- Next:
+  1. Update submission/hf_model_repo with D1-B artifact pointer + 13-lang reports + new reproduce.sh
+  2. Package and push final submission
+  3. Send HI 1985 organizer email
+- Last updated: 2026-05-13 19:05 IST
