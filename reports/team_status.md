@@ -1038,3 +1038,35 @@ Copy this block for a new workstream entry:
   - **Model**: 4.1 GB W4A16 (50% smaller than FP8, ~75% smaller than BF16).
 - Cost: /usr/bin/bash (RTX 5080 local, ~45 min).
 - Last updated: 2026-05-14 12:00 IST
+
+## 2026-05-14 (continued) — reproduce.sh dry-run on fresh L4
+
+#### Workstream: Submission reproducibility verification
+- Owner: cross-domain research thread
+- Status: done
+- Moved:
+  - Spun up fresh RunPod secure-cloud L4 ($0.39/hr, Romania) — pod bccriuxohqnryh.
+  - Cloned the private HF repo Shankara-A-S/voxtral-mini-4b-asr from scratch
+    via snapshot_download (4 GB safetensors + scripts + reports in ~25 s over CDN).
+  - Ran bash reproduce.sh end-to-end as a real organizer would.
+  - Caught and fixed 2 real bugs:
+    1. reproduce.sh tried pip install torch==2.10 from cu124 index (only goes to 2.6).
+       Fix: drop the explicit torch install; let vllm 0.19.1 pull torch 2.10+cu128 from PyPI.
+    2. Submission scripts/evaluate_fleurs.py was the Round-1 version without LUFS flags.
+       Fix: replaced with the main repo Round-2 version (has --target-lufs, --gate-silence, etc).
+  - Both fixes uploaded to the HF repo; full reproduce.sh re-ran cleanly.
+  - Reproduction match table (claimed vs reproduced):
+    | Slice  | claimed         | reproduced      | delta    | kJ claim | kJ repro | delta kJ |
+    |--------|-----------------|-----------------|----------|----------|----------|----------|
+    | EN500  | 5.58% WER       | 5.56% WER       | -0.02 pp | 107.8    | 108.6    | +0.8     |
+    | HI100  | 24.09% WER      | 24.01% WER      | -0.08 pp |  28.8    |  29.0    | +0.2     |
+    | FR100  | 7.36% WER       | 7.11% WER       | -0.25 pp |  21.7    |  21.6    | -0.1     |
+    | JA100  | 7.41% CER       | 6.79% CER       | -0.62 pp |  41.0    |  41.3    | +0.3     |
+    | TOTAL  | -               | -               | -        | 199.3    | 200.6    | +1.3     |
+  - Total energy delta vs claim: +0.65% — well within CodeCarbon variance.
+  - All quality metrics within 0.62 pp; FR/JA actually reproduced BETTER than claimed
+    (run-to-run bootstrap variance).
+- Decision: submission package is reproducible. Ship.
+- Pod cost: ~$0.45 (~70 min).
+- Pod terminated: ~/runpodctl pod delete bccriuxohqnryh succeeded, pod list now empty.
+- Last updated: 2026-05-14 14:10 IST
