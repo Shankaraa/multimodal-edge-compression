@@ -470,7 +470,7 @@ def main() -> None:
         from llmcompressor.modifiers.transform import SpinQuantModifier
     if args.quip:
         from llmcompressor.modifiers.transform import QuIPModifier
-    from transformers import AutoProcessor, AutoTokenizer, VoxtralRealtimeForConditionalGeneration
+    from transformers import AutoTokenizer, VoxtralRealtimeForConditionalGeneration
 
     model_dir = Path(args.model)
     calibration_jsonl = Path(args.calibration_jsonl)
@@ -495,8 +495,13 @@ def main() -> None:
     else:
         if args.batch_size != 1:
             raise ValueError("--audio-calibration-dataset requires --batch-size 1")
-        processor = AutoProcessor.from_pretrained(model_dir)
-        dataset = load_from_disk(str(audio_calibration_dataset))
+        # processor stays as tokenizer — the audio collator loads tensors from disk
+        # directly and does not need a Voxtral-specific processor.
+        # The HF dataset lives in the processor_dataset/ subdirectory; tensor paths
+        # in each row (inputs_embeds_path) are relative to the top-level corpus dir.
+        processor_dataset_dir = audio_calibration_dataset / "processor_dataset"
+        hf_dataset_path = processor_dataset_dir if processor_dataset_dir.exists() else audio_calibration_dataset
+        dataset = load_from_disk(str(hf_dataset_path))
         if args.limit_records is not None:
             dataset = dataset.select(range(min(args.limit_records, len(dataset))))
         data_collator = make_audio_conditioned_collator(audio_calibration_dataset)

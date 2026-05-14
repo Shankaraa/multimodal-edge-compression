@@ -1,0 +1,33 @@
+{
+  "created_at": "2026-04-28T06:05:53.237137+00:00",
+  "purpose": "prefix_cache_warmup",
+  "backend_details": {
+    "backend": "vllm_api",
+    "base_url": "http://127.0.0.1:8146/v1",
+    "model": "voxtral-realtime",
+    "prompt": "Transcribe this audio.",
+    "language_hint_mode": "fleurs_primary",
+    "temperature": null,
+    "max_tokens": 1000
+  },
+  "language": "fr_fr",
+  "dataset_source": "google_fleurs",
+  "sample_index": 0,
+  "sample_id": "1987",
+  "reference": "l'accident a eu lieu en terrain montagneux et il semblerait que cela ait été causé par un incendie malveillant",
+  "prediction": " L'accident a eu lieu en terrain montagneux et il semblerait que cela ait été causé par un incendie malveillant.",
+  "audio_duration_seconds": 10.2,
+  "audio_peak_abs_before": 0.004192,
+  "audio_peak_abs_after": 0.02,
+  "audio_rms_before": 0.000783,
+  "audio_rms_after": 0.003738,
+  "audio_gain_applied": 4.771405,
+  "quiet_audio_boosted": true,
+  "vad_trim_applied": false,
+  "vad_trim_changed_audio": false,
+  "vad_trim_seconds_removed": 0.0,
+  "vad_trim_fraction_removed": 0.0,
+  "speech_gating_applied": false,
+  "speech_gating_changed_audio": false,
+  "speech_gating_seconds_removed": 0.0
+}

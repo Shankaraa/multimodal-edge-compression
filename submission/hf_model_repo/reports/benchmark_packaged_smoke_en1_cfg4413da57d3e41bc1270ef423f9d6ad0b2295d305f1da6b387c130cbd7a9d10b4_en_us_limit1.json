@@ -1,0 +1,214 @@
+{
+  "label": "packaged_smoke_en1",
+  "model_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/models/voxtral-realtime",
+  "config_path": "vllm_config.yaml",
+  "config_sha256": "4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4",
+  "base_url": "http://127.0.0.1:8195/v1",
+  "served_model": "voxtral-realtime",
+  "evaluator_harness_version": "2026-04-24.bootstrap-ci-v1",
+  "prompt": "Transcribe this audio.",
+  "language_hint_mode": "fleurs_primary",
+  "temperature": null,
+  "vad_trim": {
+    "enabled": false,
+    "aggressiveness": 1,
+    "padding_ms": 200.0
+  },
+  "speech_gating": {
+    "enabled": false,
+    "frame_ms": 80.0,
+    "peak_threshold": 0.01,
+    "rms_threshold": 0.003,
+    "preserve_leading_silence_ms": 160.0,
+    "preserve_trailing_silence_ms": 160.0,
+    "compress_internal_silence_to_ms": null,
+    "min_internal_silence_run_ms": 640.0
+  },
+  "startup_seconds": 209.76270239399997,
+  "gpu_snapshot": {
+    "gpu_name": "NVIDIA GeForce RTX 5080",
+    "memory_used_mib": 11859,
+    "memory_total_mib": 16303,
+    "utilization_gpu_percent": 3
+  },
+  "first_request": {
+    "sample_id": "1904",
+    "reference": "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+    "prediction": " However, due to the slow communication channels, styles in the West could lag behind by 25 to 30 years.",
+    "dataset_source": "google_fleurs",
+    "prompt": "Transcribe this audio.",
+    "language_hint_mode": "fleurs_primary",
+    "temperature": null,
+    "latency_seconds": 1.7605006870000466,
+    "audio_duration_seconds": 10.56,
+    "vad_trim_applied": false,
+    "vad_trim_changed_audio": false,
+    "vad_trim_seconds_removed": 0.0,
+    "vad_trim_fraction_removed": 0.0,
+    "vad_trim_duration_after_seconds": 10.56,
+    "gated_audio_duration_seconds": 10.56,
+    "speech_gating_seconds_removed": 0.0,
+    "speech_gating_fraction_removed": 0.0,
+    "quiet_audio_boosted": false,
+    "audio_gain_applied": 1.0,
+    "speech_gating_applied": false,
+    "speech_gating_changed_audio": false
+  },
+  "warmup": {
+    "script": "scripts/warm_fleurs_prefix_cache.py",
+    "ran_before_first_request": true,
+    "ran_before_timed_eval": true,
+    "report_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/submission/hf_model_repo/reports/warmup_packaged_smoke_en1_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_en_us_limit1.json",
+    "sample_id": "1904",
+    "language": "en_us",
+    "dataset_source": "google_fleurs",
+    "empty_prediction": false
+  },
+  "evaluation": {
+    "language": "en_us",
+    "dataset_source": "google_fleurs",
+    "samples_evaluated": 1,
+    "empty_prediction_count": 0,
+    "empty_retry_sample_count": 0,
+    "empty_retry_request_count": 0,
+    "wer_percent": 21.052631578947366,
+    "wer_bootstrap_ci": {
+      "low": 0.21052631578947367,
+      "high": 0.21052631578947367,
+      "low_percent": 21.052631578947366,
+      "high_percent": 21.052631578947366
+    },
+    "wer_normalized_percent": 5.263157894736842,
+    "wer_normalized_bootstrap_ci": {
+      "low": 0.05263157894736842,
+      "high": 0.05263157894736842,
+      "low_percent": 5.263157894736842,
+      "high_percent": 5.263157894736842
+    },
+    "wer_open_asr_like_percent": 5.263157894736842,
+    "wer_open_asr_like_bootstrap_ci": {
+      "low": 0.05263157894736842,
+      "high": 0.05263157894736842,
+      "low_percent": 5.263157894736842,
+      "high_percent": 5.263157894736842
+    },
+    "cer_percent": 6.0606060606060606,
+    "cer_normalized_percent": 1.0101010101010102,
+    "cer_no_whitespace_normalized_percent": 1.2345679012345678,
+    "cer_no_whitespace_normalized_bootstrap_ci": {
+      "low": 0.012345679012345678,
+      "high": 0.012345679012345678,
+      "low_percent": 1.2345679012345678,
+      "high_percent": 1.2345679012345678
+    },
+    "elapsed_seconds": 15.207560908999994,
+    "energy_joules": 1451.621002513786,
+    "emissions_kg": 0.0002876794276817883,
+    "total_audio_seconds": 10.56,
+    "audio_seconds_per_wall_second": 0.6943914322085983,
+    "samples_per_second": 0.06575676441369302,
+    "report_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/submission/hf_model_repo/reports/fleurs_packaged_smoke_en1_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_en_us_limit1.json",
+    "energy_report_path": null
+  },
+  "log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/submission/hf_model_repo/logs/packaged_smoke_en1_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_benchmark_server.log",
+  "measurement_summary": {
+    "slice": "en_us",
+    "limit": 1,
+    "model_label": "packaged_smoke_en1",
+    "config_hash": "4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4",
+    "harness_git_sha": null,
+    "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+    "wer_raw": 0.21052631578947367,
+    "wer_raw_percent": 21.052631578947366,
+    "wer_raw_ci95": [
+      0.21052631578947367,
+      0.21052631578947367
+    ],
+    "wer_raw_ci95_percent": [
+      21.052631578947366,
+      21.052631578947366
+    ],
+    "wer_normalized": 0.05263157894736842,
+    "wer_normalized_percent": 5.263157894736842,
+    "wer_normalized_ci95": [
+      0.05263157894736842,
+      0.05263157894736842
+    ],
+    "wer_normalized_ci95_percent": [
+      5.263157894736842,
+      5.263157894736842
+    ],
+    "cer_normalized_no_space": 0.012345679012345678,
+    "cer_normalized_no_space_percent": 1.2345679012345678,
+    "cer_normalized_no_space_ci95": [
+      0.012345679012345678,
+      0.012345679012345678
+    ],
+    "cer_normalized_no_space_ci95_percent": [
+      1.2345679012345678,
+      1.2345679012345678
+    ],
+    "empty_prediction_count": 0,
+    "empty_prediction_ids": [],
+    "elapsed_seconds": 15.207560908999994,
+    "energy_joules": 1451.621002513786,
+    "emissions_kg": 0.0002876794276817883,
+    "per_sample_wer": [
+      {
+        "id": "1904",
+        "wer_raw": 0.21052631578947367,
+        "wer_normalized": 0.05263157894736842
+      }
+    ],
+    "server_log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/submission/hf_model_repo/logs/packaged_smoke_en1_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_benchmark_server.log"
+  },
+  "slice": "en_us",
+  "limit": 1,
+  "model_label": "packaged_smoke_en1",
+  "config_hash": "4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4",
+  "harness_git_sha": null,
+  "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+  "wer_raw": 0.21052631578947367,
+  "wer_raw_percent": 21.052631578947366,
+  "wer_raw_ci95": [
+    0.21052631578947367,
+    0.21052631578947367
+  ],
+  "wer_raw_ci95_percent": [
+    21.052631578947366,
+    21.052631578947366
+  ],
+  "wer_normalized": 0.05263157894736842,
+  "wer_normalized_percent": 5.263157894736842,
+  "wer_normalized_ci95": [
+    0.05263157894736842,
+    0.05263157894736842
+  ],
+  "wer_normalized_ci95_percent": [
+    5.263157894736842,
+    5.263157894736842
+  ],
+  "cer_normalized_no_space": 0.012345679012345678,
+  "cer_normalized_no_space_percent": 1.2345679012345678,
+  "cer_normalized_no_space_ci95": [
+    0.012345679012345678,
+    0.012345679012345678
+  ],
+  "cer_normalized_no_space_ci95_percent": [
+    1.2345679012345678,
+    1.2345679012345678
+  ],
+  "empty_prediction_count": 0,
+  "empty_prediction_ids": [],
+  "elapsed_seconds": 15.207560908999994,
+  "energy_joules": 1451.621002513786,
+  "emissions_kg": 0.0002876794276817883,
+  "per_sample_wer": [
+    {
+      "id": "1904",
+      "wer_raw": 0.21052631578947367,
+      "wer_normalized": 0.05263157894736842
+    }
+  ],
+  "server_log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/submission/hf_model_repo/logs/packaged_smoke_en1_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_benchmark_server.log"
+}

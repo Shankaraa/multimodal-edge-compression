@@ -1,0 +1,194 @@
+{
+  "candidate": "Track A Voxtral Mini Realtime served with vLLM runtime FP8",
+  "base_model_id": "mistralai/Voxtral-Mini-4B-Realtime-2602",
+  "base_model_revision": "2769294da9567371363522aac9bbcfdd19447add",
+  "serving_config": "vllm_config.yaml",
+  "packaged_model_field": ".",
+  "benchmark_runtime_config_sha256": "4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4",
+  "final_client_policy": {
+    "language_hint_mode": "fleurs_primary",
+    "empty_retry_count": 2,
+    "vad_trim": false,
+    "speech_gating": false,
+    "dataset_source": "google_fleurs"
+  },
+  "claims": [
+    {
+      "id": "fp8_tracka_en_us_500",
+      "kind": "candidate",
+      "language": "en_us",
+      "metric_file": "benchmark_fp8_tracka_novad_hint_retry2_en500_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_en_us_limit500.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 500,
+        "evaluation.empty_prediction_count": 0,
+        "evaluation.empty_retry_request_count": 0,
+        "evaluation.wer_normalized_percent": 6.1456007146047344,
+        "evaluation.wer_normalized_bootstrap_ci.low_percent": 5.499646892655368,
+        "evaluation.wer_normalized_bootstrap_ci.high_percent": 6.779367143476376,
+        "evaluation.energy_joules": 189442.09913538993
+      },
+      "gate": {
+        "metric": "normalized WER",
+        "metric_path": "evaluation.wer_normalized_percent",
+        "ceiling_percent": 7.56,
+        "margin_pp": 1.4143992853952652
+      }
+    },
+    {
+      "id": "fp8_tracka_fr_fr_100",
+      "kind": "candidate",
+      "language": "fr_fr",
+      "metric_file": "benchmark_fp8_tracka_novad_hint_retry2_fr100_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_fr_fr_limit100.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 100,
+        "evaluation.empty_prediction_count": 0,
+        "evaluation.empty_retry_request_count": 0,
+        "evaluation.wer_normalized_percent": 8.454810495626822,
+        "evaluation.wer_normalized_bootstrap_ci.low_percent": 6.780923994038749,
+        "evaluation.wer_normalized_bootstrap_ci.high_percent": 10.248565965583174,
+        "evaluation.energy_joules": 37882.63649264353
+      },
+      "gate": {
+        "metric": "normalized WER",
+        "metric_path": "evaluation.wer_normalized_percent",
+        "ceiling_percent": 10.30,
+        "margin_pp": 1.8451895043731792
+      }
+    },
+    {
+      "id": "fp8_tracka_hi_in_100",
+      "kind": "candidate",
+      "language": "hi_in",
+      "metric_file": "benchmark_fp8_tracka_novad_hint_retry2_hi100_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_hi_in_limit100.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 100,
+        "evaluation.empty_prediction_count": 0,
+        "evaluation.empty_retry_request_count": 0,
+        "evaluation.wer_normalized_percent": 25.43086939869782,
+        "evaluation.wer_normalized_bootstrap_ci.low_percent": 22.48062015503876,
+        "evaluation.wer_normalized_bootstrap_ci.high_percent": 28.63359442993908,
+        "evaluation.energy_joules": 44502.93182649271
+      },
+      "gate": {
+        "metric": "normalized WER",
+        "metric_path": "evaluation.wer_normalized_percent",
+        "ceiling_percent": 32.84,
+        "margin_pp": 7.409130601302184
+      }
+    },
+    {
+      "id": "fp8_tracka_ja_jp_100",
+      "kind": "candidate",
+      "language": "ja_jp",
+      "metric_file": "benchmark_fp8_tracka_novad_hint_retry2_ja100_cfg4413da57d3e41bc1270ef423f9d6ad0b2295d305f1da6b387c130cbd7a9d10b4_ja_jp_limit100.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 100,
+        "evaluation.empty_prediction_count": 0,
+        "evaluation.empty_retry_request_count": 0,
+        "evaluation.cer_no_whitespace_normalized_percent": 7.091917591125198,
+        "evaluation.cer_no_whitespace_normalized_bootstrap_ci.low_percent": 5.553351844506149,
+        "evaluation.cer_no_whitespace_normalized_bootstrap_ci.high_percent": 8.689964492618202,
+        "evaluation.energy_joules": 73906.4756209149
+      },
+      "gate": {
+        "metric": "no-space CER",
+        "metric_path": "evaluation.cer_no_whitespace_normalized_percent",
+        "ceiling_percent": 11.08,
+        "margin_pp": 3.988082408874802
+      }
+    },
+    {
+      "id": "bf16_same_policy_en_us_500",
+      "kind": "same_policy_bf16_reference",
+      "language": "en_us",
+      "metric_file": "benchmark_bf16_current_harness_novad_hint_retry2_en500_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_en_us_limit500.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 500,
+        "evaluation.empty_prediction_count": 1,
+        "evaluation.empty_retry_request_count": 2,
+        "evaluation.wer_normalized_percent": 6.056275122822688,
+        "evaluation.energy_joules": 250404.79475318323
+      }
+    },
+    {
+      "id": "bf16_same_policy_fr_fr_100",
+      "kind": "same_policy_bf16_reference",
+      "language": "fr_fr",
+      "metric_file": "benchmark_bf16_current_harness_novad_hint_retry2_fr100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_fr_fr_limit100.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 100,
+        "evaluation.empty_prediction_count": 0,
+        "evaluation.empty_retry_request_count": 0,
+        "evaluation.wer_normalized_percent": 8.272594752186588,
+        "evaluation.energy_joules": 55218.91468375029
+      }
+    },
+    {
+      "id": "bf16_same_policy_hi_in_100",
+      "kind": "same_policy_bf16_reference",
+      "language": "hi_in",
+      "metric_file": "benchmark_bf16_current_harness_novad_hint_retry2_hi100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_hi_in_limit100.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 100,
+        "evaluation.empty_prediction_count": 1,
+        "evaluation.empty_retry_request_count": 2,
+        "evaluation.wer_normalized_percent": 26.273458445040216,
+        "evaluation.energy_joules": 71785.64567168673
+      }
+    },
+    {
+      "id": "bf16_same_policy_ja_jp_100",
+      "kind": "same_policy_bf16_reference",
+      "language": "ja_jp",
+      "metric_file": "benchmark_bf16_current_harness_novad_hint_retry2_ja100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_ja_jp_limit100.json",
+      "report_values": {
+        "language_hint_mode": "fleurs_primary",
+        "vad_trim.enabled": false,
+        "speech_gating.enabled": false,
+        "evaluation.samples_evaluated": 100,
+        "evaluation.empty_prediction_count": 0,
+        "evaluation.empty_retry_request_count": 0,
+        "evaluation.cer_no_whitespace_normalized_percent": 6.735340729001585,
+        "evaluation.energy_joules": 97205.60380093378
+      }
+    }
+  ],
+  "derived_claims": {
+    "fp8_claim_ids": [
+      "fp8_tracka_en_us_500",
+      "fp8_tracka_fr_fr_100",
+      "fp8_tracka_hi_in_100",
+      "fp8_tracka_ja_jp_100"
+    ],
+    "bf16_claim_ids": [
+      "bf16_same_policy_en_us_500",
+      "bf16_same_policy_fr_fr_100",
+      "bf16_same_policy_hi_in_100",
+      "bf16_same_policy_ja_jp_100"
+    ],
+    "fp8_total_energy_joules": 345734.14307544107,
+    "bf16_total_energy_joules": 474614.95890955406,
+    "fp8_vs_bf16_energy_reduction_percent": 27.15481537501927
+  }
+}

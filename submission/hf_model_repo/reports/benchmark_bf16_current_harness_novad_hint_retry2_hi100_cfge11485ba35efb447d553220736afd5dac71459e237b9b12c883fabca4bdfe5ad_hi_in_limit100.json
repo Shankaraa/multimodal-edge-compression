@@ -1,0 +1,1208 @@
+{
+  "label": "bf16_current_harness_novad_hint_retry2_hi100",
+  "model_path": "models/voxtral-realtime",
+  "config_path": "configs/vllm/bf16_current_harness.yaml",
+  "config_sha256": "e11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad",
+  "base_url": "http://127.0.0.1:8150/v1",
+  "served_model": "voxtral-realtime",
+  "evaluator_harness_version": "2026-04-24.bootstrap-ci-v1",
+  "prompt": "Transcribe this audio.",
+  "language_hint_mode": "fleurs_primary",
+  "temperature": null,
+  "vad_trim": {
+    "enabled": false,
+    "aggressiveness": 1,
+    "padding_ms": 200.0
+  },
+  "speech_gating": {
+    "enabled": false,
+    "frame_ms": 80.0,
+    "peak_threshold": 0.01,
+    "rms_threshold": 0.003,
+    "preserve_leading_silence_ms": 160.0,
+    "preserve_trailing_silence_ms": 160.0,
+    "compress_internal_silence_to_ms": null,
+    "min_internal_silence_run_ms": 640.0
+  },
+  "startup_seconds": 181.83385724800002,
+  "gpu_snapshot": {
+    "gpu_name": "NVIDIA GeForce RTX 5080",
+    "memory_used_mib": 14777,
+    "memory_total_mib": 16303,
+    "utilization_gpu_percent": 3
+  },
+  "first_request": {
+    "sample_id": "1766",
+    "reference": "कुछ अणुओं में अस्थिर केंद्रक होता है जिसका मतलब यह है कि उनमें थोड़े या बिना किसी झटके से टूटने की प्रवृत्ति होती है",
+    "prediction": " कुछ अणुओं में आस्त केंद्रक होता है जिसका मतलब यहां कि उनमें थोड़े या बिना किसी जटके से तूटने की प्रवत्ती होती है।",
+    "dataset_source": "google_fleurs",
+    "prompt": "Transcribe this audio.",
+    "language_hint_mode": "fleurs_primary",
+    "temperature": null,
+    "latency_seconds": 1.8821454819999985,
+    "audio_duration_seconds": 9.12,
+    "vad_trim_applied": false,
+    "vad_trim_changed_audio": false,
+    "vad_trim_seconds_removed": 0.0,
+    "vad_trim_fraction_removed": 0.0,
+    "vad_trim_duration_after_seconds": 9.12,
+    "gated_audio_duration_seconds": 9.12,
+    "speech_gating_seconds_removed": 0.0,
+    "speech_gating_fraction_removed": 0.0,
+    "quiet_audio_boosted": false,
+    "audio_gain_applied": 1.0,
+    "speech_gating_applied": false,
+    "speech_gating_changed_audio": false
+  },
+  "warmup": {
+    "script": "scripts/warm_fleurs_prefix_cache.py",
+    "ran_before_first_request": true,
+    "ran_before_timed_eval": true,
+    "report_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/reports/warmup_bf16_current_harness_novad_hint_retry2_hi100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_hi_in_limit100.json",
+    "sample_id": "1766",
+    "language": "hi_in",
+    "dataset_source": "google_fleurs",
+    "empty_prediction": false
+  },
+  "evaluation": {
+    "language": "hi_in",
+    "dataset_source": "google_fleurs",
+    "samples_evaluated": 100,
+    "empty_prediction_count": 1,
+    "empty_retry_sample_count": 1,
+    "empty_retry_request_count": 2,
+    "wer_percent": 31.28858024691358,
+    "wer_bootstrap_ci": {
+      "low": 0.2780250910562525,
+      "high": 0.35105162523900574,
+      "low_percent": 27.80250910562525,
+      "high_percent": 35.105162523900574
+    },
+    "wer_normalized_percent": 26.273458445040216,
+    "wer_normalized_bootstrap_ci": {
+      "low": 0.22767203513909223,
+      "high": 0.3029958285930982,
+      "low_percent": 22.767203513909223,
+      "high_percent": 30.29958285930982
+    },
+    "wer_open_asr_like_percent": 17.257731958762886,
+    "wer_open_asr_like_bootstrap_ci": {
+      "low": 0.13621052631578948,
+      "high": 0.21299151888974557,
+      "low_percent": 13.621052631578948,
+      "high_percent": 21.299151888974556
+    },
+    "cer_percent": 13.180885816303276,
+    "cer_normalized_percent": 12.117065754465981,
+    "cer_no_whitespace_normalized_percent": 13.735437805336339,
+    "cer_no_whitespace_normalized_bootstrap_ci": {
+      "low": 0.0990145471609573,
+      "high": 0.1826625386996904,
+      "low_percent": 9.90145471609573,
+      "high_percent": 18.26625386996904
+    },
+    "elapsed_seconds": 272.12656692400003,
+    "energy_joules": 71785.64567168673,
+    "emissions_kg": 0.014226339676014957,
+    "total_audio_seconds": 1218.1800000000003,
+    "audio_seconds_per_wall_second": 4.476519928832291,
+    "samples_per_second": 0.3674760650176731,
+    "report_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/reports/fleurs_bf16_current_harness_novad_hint_retry2_hi100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_hi_in_limit100.json",
+    "energy_report_path": null
+  },
+  "log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/logs/bf16_current_harness_novad_hint_retry2_hi100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_benchmark_server.log",
+  "measurement_summary": {
+    "slice": "hi_in",
+    "limit": 100,
+    "model_label": "bf16_current_harness_novad_hint_retry2_hi100",
+    "config_hash": "e11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad",
+    "harness_git_sha": "a49d75d9962f155b5375567bfeed3cea148ff18d",
+    "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+    "wer_raw": 0.3128858024691358,
+    "wer_raw_percent": 31.28858024691358,
+    "wer_raw_ci95": [
+      0.2780250910562525,
+      0.35105162523900574
+    ],
+    "wer_raw_ci95_percent": [
+      27.80250910562525,
+      35.105162523900574
+    ],
+    "wer_normalized": 0.26273458445040215,
+    "wer_normalized_percent": 26.273458445040216,
+    "wer_normalized_ci95": [
+      0.22767203513909223,
+      0.3029958285930982
+    ],
+    "wer_normalized_ci95_percent": [
+      22.767203513909223,
+      30.29958285930982
+    ],
+    "cer_normalized_no_space": 0.1373543780533634,
+    "cer_normalized_no_space_percent": 13.735437805336339,
+    "cer_normalized_no_space_ci95": [
+      0.0990145471609573,
+      0.1826625386996904
+    ],
+    "cer_normalized_no_space_ci95_percent": [
+      9.90145471609573,
+      18.26625386996904
+    ],
+    "empty_prediction_count": 1,
+    "empty_prediction_ids": [
+      "1985"
+    ],
+    "elapsed_seconds": 272.12656692400003,
+    "energy_joules": 71785.64567168673,
+    "emissions_kg": 0.014226339676014957,
+    "per_sample_wer": [
+      {
+        "id": "1766",
+        "wer_raw": 0.2916666666666667,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1784",
+        "wer_raw": 0.15,
+        "wer_normalized": 0.1
+      },
+      {
+        "id": "1718",
+        "wer_raw": 0.3448275862068966,
+        "wer_normalized": 0.3448275862068966
+      },
+      {
+        "id": "1778",
+        "wer_raw": 0.25,
+        "wer_normalized": 0.16666666666666666
+      },
+      {
+        "id": "1828",
+        "wer_raw": 0.4444444444444444,
+        "wer_normalized": 0.3888888888888889
+      },
+      {
+        "id": "1666",
+        "wer_raw": 0.19230769230769232,
+        "wer_normalized": 0.15384615384615385
+      },
+      {
+        "id": "1836",
+        "wer_raw": 0.3333333333333333,
+        "wer_normalized": 0.3076923076923077
+      },
+      {
+        "id": "1792",
+        "wer_raw": 0.2,
+        "wer_normalized": 0.15
+      },
+      {
+        "id": "1827",
+        "wer_raw": 0.19047619047619047,
+        "wer_normalized": 0.14285714285714285
+      },
+      {
+        "id": "1985",
+        "wer_raw": 0.2631578947368421,
+        "wer_normalized": 0.2631578947368421
+      },
+      {
+        "id": "1996",
+        "wer_raw": 0.34615384615384615,
+        "wer_normalized": 0.17857142857142858
+      },
+      {
+        "id": "1702",
+        "wer_raw": 0.3333333333333333,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1955",
+        "wer_raw": 0.4444444444444444,
+        "wer_normalized": 0.2222222222222222
+      },
+      {
+        "id": "1797",
+        "wer_raw": 0.12,
+        "wer_normalized": 0.04
+      },
+      {
+        "id": "1680",
+        "wer_raw": 0.34146341463414637,
+        "wer_normalized": 0.21951219512195122
+      },
+      {
+        "id": "1992",
+        "wer_raw": 0.36,
+        "wer_normalized": 0.32
+      },
+      {
+        "id": "1719",
+        "wer_raw": 0.32,
+        "wer_normalized": 0.28
+      },
+      {
+        "id": "1681",
+        "wer_raw": 0.20512820512820512,
+        "wer_normalized": 0.20512820512820512
+      },
+      {
+        "id": "2006",
+        "wer_raw": 0.2222222222222222,
+        "wer_normalized": 0.2222222222222222
+      },
+      {
+        "id": "1720",
+        "wer_raw": 0.5294117647058824,
+        "wer_normalized": 0.35294117647058826
+      },
+      {
+        "id": "1732",
+        "wer_raw": 0.3888888888888889,
+        "wer_normalized": 0.3783783783783784
+      },
+      {
+        "id": "1874",
+        "wer_raw": 0.35135135135135137,
+        "wer_normalized": 0.3055555555555556
+      },
+      {
+        "id": "1981",
+        "wer_raw": 0.2608695652173913,
+        "wer_normalized": 0.2608695652173913
+      },
+      {
+        "id": "1683",
+        "wer_raw": 0.13513513513513514,
+        "wer_normalized": 0.05263157894736842
+      },
+      {
+        "id": "1807",
+        "wer_raw": 0.16666666666666666,
+        "wer_normalized": 0.16666666666666666
+      },
+      {
+        "id": "1818",
+        "wer_raw": 0.3,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1957",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1802",
+        "wer_raw": 0.18181818181818182,
+        "wer_normalized": 0.16666666666666666
+      },
+      {
+        "id": "1743",
+        "wer_raw": 0.3181818181818182,
+        "wer_normalized": 0.29545454545454547
+      },
+      {
+        "id": "1702",
+        "wer_raw": 0.3333333333333333,
+        "wer_normalized": 0.2916666666666667
+      },
+      {
+        "id": "1843",
+        "wer_raw": 0.5185185185185185,
+        "wer_normalized": 0.48148148148148145
+      },
+      {
+        "id": "1847",
+        "wer_raw": 0.4482758620689655,
+        "wer_normalized": 0.4
+      },
+      {
+        "id": "1815",
+        "wer_raw": 0.2,
+        "wer_normalized": 0.16
+      },
+      {
+        "id": "1910",
+        "wer_raw": 0.2857142857142857,
+        "wer_normalized": 0.21428571428571427
+      },
+      {
+        "id": "1721",
+        "wer_raw": 0.2631578947368421,
+        "wer_normalized": 0.2631578947368421
+      },
+      {
+        "id": "1767",
+        "wer_raw": 0.23809523809523808,
+        "wer_normalized": 0.19047619047619047
+      },
+      {
+        "id": "1958",
+        "wer_raw": 0.15,
+        "wer_normalized": 0.1
+      },
+      {
+        "id": "1669",
+        "wer_raw": 0.2631578947368421,
+        "wer_normalized": 0.21052631578947367
+      },
+      {
+        "id": "1706",
+        "wer_raw": 0.2222222222222222,
+        "wer_normalized": 0.2222222222222222
+      },
+      {
+        "id": "1759",
+        "wer_raw": 0.34146341463414637,
+        "wer_normalized": 0.30952380952380953
+      },
+      {
+        "id": "1953",
+        "wer_raw": 0.3076923076923077,
+        "wer_normalized": 0.23076923076923078
+      },
+      {
+        "id": "1769",
+        "wer_raw": 0.11538461538461539,
+        "wer_normalized": 0.07692307692307693
+      },
+      {
+        "id": "1982",
+        "wer_raw": 0.36363636363636365,
+        "wer_normalized": 0.3181818181818182
+      },
+      {
+        "id": "1801",
+        "wer_raw": 0.2222222222222222,
+        "wer_normalized": 0.2222222222222222
+      },
+      {
+        "id": "1719",
+        "wer_raw": 0.2,
+        "wer_normalized": 0.16
+      },
+      {
+        "id": "1978",
+        "wer_raw": 0.4166666666666667,
+        "wer_normalized": 0.23076923076923078
+      },
+      {
+        "id": "1820",
+        "wer_raw": 0.1875,
+        "wer_normalized": 0.1875
+      },
+      {
+        "id": "1742",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1769",
+        "wer_raw": 0.19230769230769232,
+        "wer_normalized": 0.15384615384615385
+      },
+      {
+        "id": "1895",
+        "wer_raw": 0.2,
+        "wer_normalized": 0.09523809523809523
+      },
+      {
+        "id": "1958",
+        "wer_raw": 0.25,
+        "wer_normalized": 0.2
+      },
+      {
+        "id": "1886",
+        "wer_raw": 0.3,
+        "wer_normalized": 0.2
+      },
+      {
+        "id": "1961",
+        "wer_raw": 0.3111111111111111,
+        "wer_normalized": 0.26666666666666666
+      },
+      {
+        "id": "1966",
+        "wer_raw": 0.15789473684210525,
+        "wer_normalized": 0.10526315789473684
+      },
+      {
+        "id": "1695",
+        "wer_raw": 0.34375,
+        "wer_normalized": 0.28125
+      },
+      {
+        "id": "1791",
+        "wer_raw": 0.5384615384615384,
+        "wer_normalized": 0.5384615384615384
+      },
+      {
+        "id": "1689",
+        "wer_raw": 0.2702702702702703,
+        "wer_normalized": 0.24324324324324326
+      },
+      {
+        "id": "1982",
+        "wer_raw": 0.2727272727272727,
+        "wer_normalized": 0.22727272727272727
+      },
+      {
+        "id": "1847",
+        "wer_raw": 0.3793103448275862,
+        "wer_normalized": 0.36666666666666664
+      },
+      {
+        "id": "1772",
+        "wer_raw": 0.16666666666666666,
+        "wer_normalized": 0.16666666666666666
+      },
+      {
+        "id": "1803",
+        "wer_raw": 0.1,
+        "wer_normalized": 0.05
+      },
+      {
+        "id": "1718",
+        "wer_raw": 0.27586206896551724,
+        "wer_normalized": 0.20689655172413793
+      },
+      {
+        "id": "1827",
+        "wer_raw": 0.47619047619047616,
+        "wer_normalized": 0.42857142857142855
+      },
+      {
+        "id": "1820",
+        "wer_raw": 0.125,
+        "wer_normalized": 0.125
+      },
+      {
+        "id": "1844",
+        "wer_raw": 0.17647058823529413,
+        "wer_normalized": 0.058823529411764705
+      },
+      {
+        "id": "1875",
+        "wer_raw": 0.23529411764705882,
+        "wer_normalized": 0.17647058823529413
+      },
+      {
+        "id": "1893",
+        "wer_raw": 0.34615384615384615,
+        "wer_normalized": 0.34615384615384615
+      },
+      {
+        "id": "1974",
+        "wer_raw": 0.46153846153846156,
+        "wer_normalized": 0.38461538461538464
+      },
+      {
+        "id": "1873",
+        "wer_raw": 0.12,
+        "wer_normalized": 0.04
+      },
+      {
+        "id": "1683",
+        "wer_raw": 0.10810810810810811,
+        "wer_normalized": 0.07894736842105263
+      },
+      {
+        "id": "1913",
+        "wer_raw": 0.391304347826087,
+        "wer_normalized": 0.30434782608695654
+      },
+      {
+        "id": "1887",
+        "wer_raw": 0.2857142857142857,
+        "wer_normalized": 0.23809523809523808
+      },
+      {
+        "id": "1750",
+        "wer_raw": 0.21428571428571427,
+        "wer_normalized": 0.14285714285714285
+      },
+      {
+        "id": "1681",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1842",
+        "wer_raw": 0.29411764705882354,
+        "wer_normalized": 0.23529411764705882
+      },
+      {
+        "id": "1993",
+        "wer_raw": 0.4666666666666667,
+        "wer_normalized": 0.4666666666666667
+      },
+      {
+        "id": "1835",
+        "wer_raw": 0.23529411764705882,
+        "wer_normalized": 0.22857142857142856
+      },
+      {
+        "id": "1933",
+        "wer_raw": 0.25,
+        "wer_normalized": 0.16666666666666666
+      },
+      {
+        "id": "1956",
+        "wer_raw": 0.2647058823529412,
+        "wer_normalized": 0.23529411764705882
+      },
+      {
+        "id": "1861",
+        "wer_raw": 0.3076923076923077,
+        "wer_normalized": 0.2692307692307692
+      },
+      {
+        "id": "1849",
+        "wer_raw": 0.34782608695652173,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1960",
+        "wer_raw": 0.2553191489361702,
+        "wer_normalized": 0.1702127659574468
+      },
+      {
+        "id": "1985",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1922",
+        "wer_raw": 0.391304347826087,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1952",
+        "wer_raw": 0.17857142857142858,
+        "wer_normalized": 0.03571428571428571
+      },
+      {
+        "id": "1937",
+        "wer_raw": 0.417910447761194,
+        "wer_normalized": 0.29577464788732394
+      },
+      {
+        "id": "1868",
+        "wer_raw": 0.058823529411764705,
+        "wer_normalized": 0.029411764705882353
+      },
+      {
+        "id": "1925",
+        "wer_raw": 0.22727272727272727,
+        "wer_normalized": 0.22727272727272727
+      },
+      {
+        "id": "1719",
+        "wer_raw": 0.4,
+        "wer_normalized": 0.32
+      },
+      {
+        "id": "1687",
+        "wer_raw": 0.625,
+        "wer_normalized": 0.4117647058823529
+      },
+      {
+        "id": "2009",
+        "wer_raw": 0.13333333333333333,
+        "wer_normalized": 0.1
+      },
+      {
+        "id": "1973",
+        "wer_raw": 0.2777777777777778,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1746",
+        "wer_raw": 0.21428571428571427,
+        "wer_normalized": 0.14285714285714285
+      },
+      {
+        "id": "1853",
+        "wer_raw": 0.2857142857142857,
+        "wer_normalized": 0.23809523809523808
+      },
+      {
+        "id": "1675",
+        "wer_raw": 0.25925925925925924,
+        "wer_normalized": 0.17857142857142858
+      },
+      {
+        "id": "1723",
+        "wer_raw": 0.27586206896551724,
+        "wer_normalized": 0.27586206896551724
+      },
+      {
+        "id": "1788",
+        "wer_raw": 0.25,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1661",
+        "wer_raw": 0.21739130434782608,
+        "wer_normalized": 0.13043478260869565
+      },
+      {
+        "id": "1965",
+        "wer_raw": 0.5909090909090909,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1919",
+        "wer_raw": 0.45454545454545453,
+        "wer_normalized": 0.4090909090909091
+      }
+    ],
+    "server_log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/logs/bf16_current_harness_novad_hint_retry2_hi100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_benchmark_server.log"
+  },
+  "slice": "hi_in",
+  "limit": 100,
+  "model_label": "bf16_current_harness_novad_hint_retry2_hi100",
+  "config_hash": "e11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad",
+  "harness_git_sha": "a49d75d9962f155b5375567bfeed3cea148ff18d",
+  "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+  "wer_raw": 0.3128858024691358,
+  "wer_raw_percent": 31.28858024691358,
+  "wer_raw_ci95": [
+    0.2780250910562525,
+    0.35105162523900574
+  ],
+  "wer_raw_ci95_percent": [
+    27.80250910562525,
+    35.105162523900574
+  ],
+  "wer_normalized": 0.26273458445040215,
+  "wer_normalized_percent": 26.273458445040216,
+  "wer_normalized_ci95": [
+    0.22767203513909223,
+    0.3029958285930982
+  ],
+  "wer_normalized_ci95_percent": [
+    22.767203513909223,
+    30.29958285930982
+  ],
+  "cer_normalized_no_space": 0.1373543780533634,
+  "cer_normalized_no_space_percent": 13.735437805336339,
+  "cer_normalized_no_space_ci95": [
+    0.0990145471609573,
+    0.1826625386996904
+  ],
+  "cer_normalized_no_space_ci95_percent": [
+    9.90145471609573,
+    18.26625386996904
+  ],
+  "empty_prediction_count": 1,
+  "empty_prediction_ids": [
+    "1985"
+  ],
+  "elapsed_seconds": 272.12656692400003,
+  "energy_joules": 71785.64567168673,
+  "emissions_kg": 0.014226339676014957,
+  "per_sample_wer": [
+    {
+      "id": "1766",
+      "wer_raw": 0.2916666666666667,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1784",
+      "wer_raw": 0.15,
+      "wer_normalized": 0.1
+    },
+    {
+      "id": "1718",
+      "wer_raw": 0.3448275862068966,
+      "wer_normalized": 0.3448275862068966
+    },
+    {
+      "id": "1778",
+      "wer_raw": 0.25,
+      "wer_normalized": 0.16666666666666666
+    },
+    {
+      "id": "1828",
+      "wer_raw": 0.4444444444444444,
+      "wer_normalized": 0.3888888888888889
+    },
+    {
+      "id": "1666",
+      "wer_raw": 0.19230769230769232,
+      "wer_normalized": 0.15384615384615385
+    },
+    {
+      "id": "1836",
+      "wer_raw": 0.3333333333333333,
+      "wer_normalized": 0.3076923076923077
+    },
+    {
+      "id": "1792",
+      "wer_raw": 0.2,
+      "wer_normalized": 0.15
+    },
+    {
+      "id": "1827",
+      "wer_raw": 0.19047619047619047,
+      "wer_normalized": 0.14285714285714285
+    },
+    {
+      "id": "1985",
+      "wer_raw": 0.2631578947368421,
+      "wer_normalized": 0.2631578947368421
+    },
+    {
+      "id": "1996",
+      "wer_raw": 0.34615384615384615,
+      "wer_normalized": 0.17857142857142858
+    },
+    {
+      "id": "1702",
+      "wer_raw": 0.3333333333333333,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1955",
+      "wer_raw": 0.4444444444444444,
+      "wer_normalized": 0.2222222222222222
+    },
+    {
+      "id": "1797",
+      "wer_raw": 0.12,
+      "wer_normalized": 0.04
+    },
+    {
+      "id": "1680",
+      "wer_raw": 0.34146341463414637,
+      "wer_normalized": 0.21951219512195122
+    },
+    {
+      "id": "1992",
+      "wer_raw": 0.36,
+      "wer_normalized": 0.32
+    },
+    {
+      "id": "1719",
+      "wer_raw": 0.32,
+      "wer_normalized": 0.28
+    },
+    {
+      "id": "1681",
+      "wer_raw": 0.20512820512820512,
+      "wer_normalized": 0.20512820512820512
+    },
+    {
+      "id": "2006",
+      "wer_raw": 0.2222222222222222,
+      "wer_normalized": 0.2222222222222222
+    },
+    {
+      "id": "1720",
+      "wer_raw": 0.5294117647058824,
+      "wer_normalized": 0.35294117647058826
+    },
+    {
+      "id": "1732",
+      "wer_raw": 0.3888888888888889,
+      "wer_normalized": 0.3783783783783784
+    },
+    {
+      "id": "1874",
+      "wer_raw": 0.35135135135135137,
+      "wer_normalized": 0.3055555555555556
+    },
+    {
+      "id": "1981",
+      "wer_raw": 0.2608695652173913,
+      "wer_normalized": 0.2608695652173913
+    },
+    {
+      "id": "1683",
+      "wer_raw": 0.13513513513513514,
+      "wer_normalized": 0.05263157894736842
+    },
+    {
+      "id": "1807",
+      "wer_raw": 0.16666666666666666,
+      "wer_normalized": 0.16666666666666666
+    },
+    {
+      "id": "1818",
+      "wer_raw": 0.3,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1957",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1802",
+      "wer_raw": 0.18181818181818182,
+      "wer_normalized": 0.16666666666666666
+    },
+    {
+      "id": "1743",
+      "wer_raw": 0.3181818181818182,
+      "wer_normalized": 0.29545454545454547
+    },
+    {
+      "id": "1702",
+      "wer_raw": 0.3333333333333333,
+      "wer_normalized": 0.2916666666666667
+    },
+    {
+      "id": "1843",
+      "wer_raw": 0.5185185185185185,
+      "wer_normalized": 0.48148148148148145
+    },
+    {
+      "id": "1847",
+      "wer_raw": 0.4482758620689655,
+      "wer_normalized": 0.4
+    },
+    {
+      "id": "1815",
+      "wer_raw": 0.2,
+      "wer_normalized": 0.16
+    },
+    {
+      "id": "1910",
+      "wer_raw": 0.2857142857142857,
+      "wer_normalized": 0.21428571428571427
+    },
+    {
+      "id": "1721",
+      "wer_raw": 0.2631578947368421,
+      "wer_normalized": 0.2631578947368421
+    },
+    {
+      "id": "1767",
+      "wer_raw": 0.23809523809523808,
+      "wer_normalized": 0.19047619047619047
+    },
+    {
+      "id": "1958",
+      "wer_raw": 0.15,
+      "wer_normalized": 0.1
+    },
+    {
+      "id": "1669",
+      "wer_raw": 0.2631578947368421,
+      "wer_normalized": 0.21052631578947367
+    },
+    {
+      "id": "1706",
+      "wer_raw": 0.2222222222222222,
+      "wer_normalized": 0.2222222222222222
+    },
+    {
+      "id": "1759",
+      "wer_raw": 0.34146341463414637,
+      "wer_normalized": 0.30952380952380953
+    },
+    {
+      "id": "1953",
+      "wer_raw": 0.3076923076923077,
+      "wer_normalized": 0.23076923076923078
+    },
+    {
+      "id": "1769",
+      "wer_raw": 0.11538461538461539,
+      "wer_normalized": 0.07692307692307693
+    },
+    {
+      "id": "1982",
+      "wer_raw": 0.36363636363636365,
+      "wer_normalized": 0.3181818181818182
+    },
+    {
+      "id": "1801",
+      "wer_raw": 0.2222222222222222,
+      "wer_normalized": 0.2222222222222222
+    },
+    {
+      "id": "1719",
+      "wer_raw": 0.2,
+      "wer_normalized": 0.16
+    },
+    {
+      "id": "1978",
+      "wer_raw": 0.4166666666666667,
+      "wer_normalized": 0.23076923076923078
+    },
+    {
+      "id": "1820",
+      "wer_raw": 0.1875,
+      "wer_normalized": 0.1875
+    },
+    {
+      "id": "1742",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1769",
+      "wer_raw": 0.19230769230769232,
+      "wer_normalized": 0.15384615384615385
+    },
+    {
+      "id": "1895",
+      "wer_raw": 0.2,
+      "wer_normalized": 0.09523809523809523
+    },
+    {
+      "id": "1958",
+      "wer_raw": 0.25,
+      "wer_normalized": 0.2
+    },
+    {
+      "id": "1886",
+      "wer_raw": 0.3,
+      "wer_normalized": 0.2
+    },
+    {
+      "id": "1961",
+      "wer_raw": 0.3111111111111111,
+      "wer_normalized": 0.26666666666666666
+    },
+    {
+      "id": "1966",
+      "wer_raw": 0.15789473684210525,
+      "wer_normalized": 0.10526315789473684
+    },
+    {
+      "id": "1695",
+      "wer_raw": 0.34375,
+      "wer_normalized": 0.28125
+    },
+    {
+      "id": "1791",
+      "wer_raw": 0.5384615384615384,
+      "wer_normalized": 0.5384615384615384
+    },
+    {
+      "id": "1689",
+      "wer_raw": 0.2702702702702703,
+      "wer_normalized": 0.24324324324324326
+    },
+    {
+      "id": "1982",
+      "wer_raw": 0.2727272727272727,
+      "wer_normalized": 0.22727272727272727
+    },
+    {
+      "id": "1847",
+      "wer_raw": 0.3793103448275862,
+      "wer_normalized": 0.36666666666666664
+    },
+    {
+      "id": "1772",
+      "wer_raw": 0.16666666666666666,
+      "wer_normalized": 0.16666666666666666
+    },
+    {
+      "id": "1803",
+      "wer_raw": 0.1,
+      "wer_normalized": 0.05
+    },
+    {
+      "id": "1718",
+      "wer_raw": 0.27586206896551724,
+      "wer_normalized": 0.20689655172413793
+    },
+    {
+      "id": "1827",
+      "wer_raw": 0.47619047619047616,
+      "wer_normalized": 0.42857142857142855
+    },
+    {
+      "id": "1820",
+      "wer_raw": 0.125,
+      "wer_normalized": 0.125
+    },
+    {
+      "id": "1844",
+      "wer_raw": 0.17647058823529413,
+      "wer_normalized": 0.058823529411764705
+    },
+    {
+      "id": "1875",
+      "wer_raw": 0.23529411764705882,
+      "wer_normalized": 0.17647058823529413
+    },
+    {
+      "id": "1893",
+      "wer_raw": 0.34615384615384615,
+      "wer_normalized": 0.34615384615384615
+    },
+    {
+      "id": "1974",
+      "wer_raw": 0.46153846153846156,
+      "wer_normalized": 0.38461538461538464
+    },
+    {
+      "id": "1873",
+      "wer_raw": 0.12,
+      "wer_normalized": 0.04
+    },
+    {
+      "id": "1683",
+      "wer_raw": 0.10810810810810811,
+      "wer_normalized": 0.07894736842105263
+    },
+    {
+      "id": "1913",
+      "wer_raw": 0.391304347826087,
+      "wer_normalized": 0.30434782608695654
+    },
+    {
+      "id": "1887",
+      "wer_raw": 0.2857142857142857,
+      "wer_normalized": 0.23809523809523808
+    },
+    {
+      "id": "1750",
+      "wer_raw": 0.21428571428571427,
+      "wer_normalized": 0.14285714285714285
+    },
+    {
+      "id": "1681",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1842",
+      "wer_raw": 0.29411764705882354,
+      "wer_normalized": 0.23529411764705882
+    },
+    {
+      "id": "1993",
+      "wer_raw": 0.4666666666666667,
+      "wer_normalized": 0.4666666666666667
+    },
+    {
+      "id": "1835",
+      "wer_raw": 0.23529411764705882,
+      "wer_normalized": 0.22857142857142856
+    },
+    {
+      "id": "1933",
+      "wer_raw": 0.25,
+      "wer_normalized": 0.16666666666666666
+    },
+    {
+      "id": "1956",
+      "wer_raw": 0.2647058823529412,
+      "wer_normalized": 0.23529411764705882
+    },
+    {
+      "id": "1861",
+      "wer_raw": 0.3076923076923077,
+      "wer_normalized": 0.2692307692307692
+    },
+    {
+      "id": "1849",
+      "wer_raw": 0.34782608695652173,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1960",
+      "wer_raw": 0.2553191489361702,
+      "wer_normalized": 0.1702127659574468
+    },
+    {
+      "id": "1985",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1922",
+      "wer_raw": 0.391304347826087,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1952",
+      "wer_raw": 0.17857142857142858,
+      "wer_normalized": 0.03571428571428571
+    },
+    {
+      "id": "1937",
+      "wer_raw": 0.417910447761194,
+      "wer_normalized": 0.29577464788732394
+    },
+    {
+      "id": "1868",
+      "wer_raw": 0.058823529411764705,
+      "wer_normalized": 0.029411764705882353
+    },
+    {
+      "id": "1925",
+      "wer_raw": 0.22727272727272727,
+      "wer_normalized": 0.22727272727272727
+    },
+    {
+      "id": "1719",
+      "wer_raw": 0.4,
+      "wer_normalized": 0.32
+    },
+    {
+      "id": "1687",
+      "wer_raw": 0.625,
+      "wer_normalized": 0.4117647058823529
+    },
+    {
+      "id": "2009",
+      "wer_raw": 0.13333333333333333,
+      "wer_normalized": 0.1
+    },
+    {
+      "id": "1973",
+      "wer_raw": 0.2777777777777778,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1746",
+      "wer_raw": 0.21428571428571427,
+      "wer_normalized": 0.14285714285714285
+    },
+    {
+      "id": "1853",
+      "wer_raw": 0.2857142857142857,
+      "wer_normalized": 0.23809523809523808
+    },
+    {
+      "id": "1675",
+      "wer_raw": 0.25925925925925924,
+      "wer_normalized": 0.17857142857142858
+    },
+    {
+      "id": "1723",
+      "wer_raw": 0.27586206896551724,
+      "wer_normalized": 0.27586206896551724
+    },
+    {
+      "id": "1788",
+      "wer_raw": 0.25,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1661",
+      "wer_raw": 0.21739130434782608,
+      "wer_normalized": 0.13043478260869565
+    },
+    {
+      "id": "1965",
+      "wer_raw": 0.5909090909090909,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1919",
+      "wer_raw": 0.45454545454545453,
+      "wer_normalized": 0.4090909090909091
+    }
+  ],
+  "server_log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/logs/bf16_current_harness_novad_hint_retry2_hi100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_benchmark_server.log"
+}

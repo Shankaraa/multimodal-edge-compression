@@ -1,0 +1,33 @@
+{
+  "created_at": "2026-04-28T09:39:48.386842+00:00",
+  "purpose": "prefix_cache_warmup",
+  "backend_details": {
+    "backend": "vllm_api",
+    "base_url": "http://127.0.0.1:8195/v1",
+    "model": "voxtral-realtime",
+    "prompt": "Transcribe this audio.",
+    "language_hint_mode": "fleurs_primary",
+    "temperature": null,
+    "max_tokens": 1000
+  },
+  "language": "en_us",
+  "dataset_source": "google_fleurs",
+  "sample_index": 0,
+  "sample_id": "1904",
+  "reference": "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+  "prediction": " However, due to the slow communication channels, styles in the West could lag behind by 25 to 30 years.",
+  "audio_duration_seconds": 10.56,
+  "audio_peak_abs_before": 0.037966,
+  "audio_peak_abs_after": 0.037966,
+  "audio_rms_before": 0.003723,
+  "audio_rms_after": 0.003723,
+  "audio_gain_applied": 1.0,
+  "quiet_audio_boosted": false,
+  "vad_trim_applied": false,
+  "vad_trim_changed_audio": false,
+  "vad_trim_seconds_removed": 0.0,
+  "vad_trim_fraction_removed": 0.0,
+  "speech_gating_applied": false,
+  "speech_gating_changed_audio": false,
+  "speech_gating_seconds_removed": 0.0
+}

@@ -1,0 +1,33 @@
+{
+  "created_at": "2026-04-28T06:13:32.415923+00:00",
+  "purpose": "prefix_cache_warmup",
+  "backend_details": {
+    "backend": "vllm_api",
+    "base_url": "http://127.0.0.1:8147/v1",
+    "model": "voxtral-realtime",
+    "prompt": "Transcribe this audio.",
+    "language_hint_mode": "fleurs_primary",
+    "temperature": null,
+    "max_tokens": 1000
+  },
+  "language": "hi_in",
+  "dataset_source": "google_fleurs",
+  "sample_index": 0,
+  "sample_id": "1766",
+  "reference": "कुछ अणुओं में अस्थिर केंद्रक होता है जिसका मतलब यह है कि उनमें थोड़े या बिना किसी झटके से टूटने की प्रवृत्ति होती है",
+  "prediction": " कुछ अणुओं में आर्थिक केंद्रक होता है जिसका मतलब यहां कि उनमें थोड़े या बिना किसी जटके से तूटने की प्रवत्ती होती है।",
+  "audio_duration_seconds": 9.12,
+  "audio_peak_abs_before": 0.227467,
+  "audio_peak_abs_after": 0.227467,
+  "audio_rms_before": 0.041878,
+  "audio_rms_after": 0.041878,
+  "audio_gain_applied": 1.0,
+  "quiet_audio_boosted": false,
+  "vad_trim_applied": false,
+  "vad_trim_changed_audio": false,
+  "vad_trim_seconds_removed": 0.0,
+  "vad_trim_fraction_removed": 0.0,
+  "speech_gating_applied": false,
+  "speech_gating_changed_audio": false,
+  "speech_gating_seconds_removed": 0.0
+}
