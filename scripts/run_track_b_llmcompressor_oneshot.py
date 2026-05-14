@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Track B Voxtral W4A16 GPTQ with llm-compressor.
+"""Run Track B Voxtral GPTQ with llm-compressor.
 
 This runner exists because llm-compressor 0.10.x still assumes a CausalLM
 AutoModel loader, while Voxtral Realtime is loaded through
@@ -33,8 +33,14 @@ TORCH_INIT_FUNCTION_NAMES = [
 ]
 
 
+PROJECTION_SUFFIX_RE = (
+    r"(self_attn\.(q_proj|k_proj|v_proj|o_proj)|"
+    r"mlp\.(gate_proj|up_proj|down_proj))"
+)
+
+
 TARGETS = [
-    r"re:^language_model\.model\.layers\.\d+\.(self_attn\.(q_proj|k_proj|v_proj|o_proj)|mlp\.(gate_proj|up_proj|down_proj))$",
+    rf"re:^language_model\.model\.layers\.\d+\.{PROJECTION_SUFFIX_RE}$",
 ]
 
 
@@ -70,6 +76,15 @@ def parse_args() -> argparse.Namespace:
         default="data/calibration/track_b_multilingual_text_256.jsonl",
     )
     parser.add_argument(
+        "--audio-calibration-dataset",
+        default=None,
+        help=(
+            "Path to a Dataset.save_to_disk directory built by "
+            "build_track_b_audio_conditioned_calibration.py. When set, "
+            "calibration loads real-audio projected decoder inputs from disk."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         default="models/voxtral-w4a16-llmcompressor-v2",
     )
@@ -77,6 +92,67 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-seq-length", type=int, default=2048)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--limit-records", type=int, default=None)
+    parser.add_argument("--smoothquant", action="store_true")
+    parser.add_argument("--smoothing-strength", type=float, default=0.8)
+    parser.add_argument(
+        "--spinquant",
+        action="store_true",
+        help=(
+            "Inject SpinQuant Hadamard rotations (R1+R2) before GPTQ. Spreads "
+            "outliers across channels so W4A16 stays robust on low-magnitude "
+            "decoder activations (e.g. quiet-audio inputs). Note: SpinQuant "
+            "fuses rotations into RMSNorms and may not handle Voxtral's extra "
+            "ada_rms_norm_t_cond per-layer norm; use --quip if calibration "
+            "fails inside SpinQuantModifier._fuse_norms."
+        ),
+    )
+    parser.add_argument(
+        "--spinquant-rotations",
+        default="R1,R2",
+        help="Comma-separated SpinQuant rotation set (subset of R1,R2,R3,R4).",
+    )
+    parser.add_argument(
+        "--spinquant-transform-type",
+        default="hadamard",
+        choices=("hadamard", "random-hadamard"),
+        help="Transform family used by SpinQuantModifier.",
+    )
+    parser.add_argument(
+        "--quip",
+        action="store_true",
+        help=(
+            "Inject QuIP-style Hadamard rotations (v+u) before GPTQ. Architecture-"
+            "agnostic alternative to SpinQuant that does NOT fuse norms, so it "
+            "works on multimodal models with extra norms like Voxtral."
+        ),
+    )
+    parser.add_argument(
+        "--quip-rotations",
+        default="v,u",
+        help="Comma-separated QuIP rotation set (subset of v,u).",
+    )
+    parser.add_argument(
+        "--quip-transform-block-size",
+        type=int,
+        default=128,
+        help="QuIP block size for Hadamard transforms.",
+    )
+    parser.add_argument(
+        "--scheme",
+        default="W4A16",
+        choices=("W4A16", "W8A16"),
+        help="Single-precision GPTQ scheme for all decoder projection targets.",
+    )
+    parser.add_argument(
+        "--w8-layers",
+        default=None,
+        help=(
+            "Optional mixed-precision layer spec for W8A16, e.g. '0-2,23-25'. "
+            "When set, these layers use W8A16 and all remaining decoder layers "
+            "use --scheme."
+        ),
+    )
+    parser.add_argument("--num-decoder-layers", type=int, default=26)
     parser.add_argument("--dampening-frac", type=float, default=0.01)
     parser.add_argument(
         "--actorder",
@@ -86,6 +162,142 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--overwrite-output", action="store_true")
     return parser.parse_args()
+
+
+SMOOTHQUANT_MAPPINGS = [
+    [
+        [
+            r"re:^language_model\.model\.layers\.\d+\.self_attn\.q_proj$",
+            r"re:^language_model\.model\.layers\.\d+\.self_attn\.k_proj$",
+            r"re:^language_model\.model\.layers\.\d+\.self_attn\.v_proj$",
+        ],
+        r"re:^language_model\.model\.layers\.\d+\.input_layernorm$",
+    ],
+    [
+        [
+            r"re:^language_model\.model\.layers\.\d+\.mlp\.gate_proj$",
+            r"re:^language_model\.model\.layers\.\d+\.mlp\.up_proj$",
+        ],
+        r"re:^language_model\.model\.layers\.\d+\.post_attention_layernorm$",
+    ],
+]
+
+
+SMOOTHQUANT_IGNORE = [
+    r"re:^audio_tower(\.|$)",
+    r"re:^multi_modal_projector(\.|$)",
+    r"re:^language_model\.model\.embed_tokens$",
+    r"re:^language_model\.model\.norm$",
+    r"re:^language_model\.lm_head$",
+    r"re:^.*ada_[^.]*($|\.)",
+    r"re:^whisper_encoder(\.|$)",
+    r"re:^audio_language_adapter(\.|$)",
+    r"re:^mm_streams_embeddings(\.|$)",
+    r"re:^norm$",
+]
+
+
+def parse_layer_spec(spec: str, *, num_layers: int) -> list[int]:
+    layers: set[int] = set()
+    for part in spec.split(","):
+        item = part.strip()
+        if not item:
+            continue
+        if "-" in item:
+            start_text, end_text = item.split("-", 1)
+            start = int(start_text)
+            end = int(end_text)
+            if end < start:
+                raise ValueError(f"Invalid descending layer range: {item}")
+            layers.update(range(start, end + 1))
+        else:
+            layers.add(int(item))
+
+    invalid = sorted(layer for layer in layers if layer < 0 or layer >= num_layers)
+    if invalid:
+        raise ValueError(f"Layer indices out of range for {num_layers} layers: {invalid}")
+    return sorted(layers)
+
+
+def target_for_layers(layers: list[int]) -> list[str]:
+    if not layers:
+        return []
+    layer_alt = "|".join(str(layer) for layer in layers)
+    return [
+        rf"re:^language_model\.model\.layers\.({layer_alt})\.{PROJECTION_SUFFIX_RE}$"
+    ]
+
+
+def build_recipe(args: argparse.Namespace, modifier_cls):
+    if args.w8_layers is None:
+        return modifier_cls(
+            scheme=args.scheme,
+            targets=TARGETS,
+            ignore=IGNORE,
+            dampening_frac=args.dampening_frac,
+            actorder=args.actorder,
+            offload_hessians=True,
+        )
+
+    w8_layers = parse_layer_spec(args.w8_layers, num_layers=args.num_decoder_layers)
+    remaining_layers = [
+        layer for layer in range(args.num_decoder_layers) if layer not in set(w8_layers)
+    ]
+    if args.scheme == "W8A16":
+        raise ValueError("--w8-layers is only meaningful when --scheme is W4A16")
+    if not remaining_layers:
+        raise ValueError("--w8-layers covers every layer; use --scheme W8A16 instead")
+
+    return [
+        modifier_cls(
+            scheme="W8A16",
+            targets=target_for_layers(w8_layers),
+            ignore=IGNORE,
+            dampening_frac=args.dampening_frac,
+            actorder=args.actorder,
+            offload_hessians=True,
+        ),
+        modifier_cls(
+            scheme=args.scheme,
+            targets=target_for_layers(remaining_layers),
+            ignore=IGNORE,
+            dampening_frac=args.dampening_frac,
+            actorder=args.actorder,
+            offload_hessians=True,
+        ),
+    ]
+
+
+def recipe_summary(recipe) -> list[dict]:
+    modifiers = recipe if isinstance(recipe, list) else [recipe]
+    summary = []
+    for modifier in modifiers:
+        item = {
+            "modifier": modifier.__class__.__name__,
+        }
+        if hasattr(modifier, "scheme"):
+            item.update(
+                {
+                    "scheme": modifier.scheme,
+                    "targets": modifier.targets,
+                    "ignore": modifier.ignore,
+                    "dampening_frac": modifier.dampening_frac,
+                    "actorder": str(modifier.actorder),
+                }
+            )
+        if hasattr(modifier, "smoothing_strength"):
+            item.update({
+                "smoothing_strength": modifier.smoothing_strength,
+                "mappings": modifier.mappings,
+                "ignore": modifier.ignore,
+            })
+        if hasattr(modifier, "rotations") and hasattr(modifier, "transform_type"):
+            item.update({
+                "rotations": list(modifier.rotations),
+                "transform_type": str(modifier.transform_type),
+            })
+        summary.append(item)
+    return summary
 
 
 def patch_transformers_for_llmcompressor() -> None:
@@ -131,6 +343,34 @@ def build_tokenized_dataset(records: list[dict], tokenizer, max_seq_length: int)
         )
 
     return Dataset.from_list(tokenized_rows)
+
+
+def make_audio_conditioned_collator(calibration_root: Path):
+    def collator(features: list[dict]):
+        import torch
+
+        if len(features) != 1:
+            raise ValueError("Audio-conditioned calibration requires batch_size=1")
+
+        feature = features[0]
+        tensor_path = calibration_root / feature["inputs_embeds_path"]
+        payload = torch.load(tensor_path, map_location="cpu")
+
+        inputs_embeds = payload["inputs_embeds"].to(dtype=torch.bfloat16)
+        if inputs_embeds.ndim == 2:
+            inputs_embeds = inputs_embeds.unsqueeze(0)
+
+        attention_mask = payload["attention_mask"].to(dtype=torch.long)
+        if attention_mask.ndim == 1:
+            attention_mask = attention_mask.unsqueeze(0)
+
+        return {
+            "inputs_embeds": inputs_embeds,
+            "attention_mask": attention_mask,
+            "num_delay_tokens": int(payload["num_delay_tokens"]),
+        }
+
+    return collator
 
 
 def copy_runtime_files(model_dir: Path, output_dir: Path) -> None:
@@ -223,37 +463,48 @@ def main() -> None:
 
     import torch
     from llmcompressor import oneshot
+    from datasets import load_from_disk
     from llmcompressor.modifiers.quantization import GPTQModifier
+    from llmcompressor.modifiers.transform.smoothquant import SmoothQuantModifier
+    if args.spinquant:
+        from llmcompressor.modifiers.transform import SpinQuantModifier
+    if args.quip:
+        from llmcompressor.modifiers.transform import QuIPModifier
     from transformers import AutoTokenizer, VoxtralRealtimeForConditionalGeneration
 
     model_dir = Path(args.model)
     calibration_jsonl = Path(args.calibration_jsonl)
     output_dir = Path(args.output_dir)
+    audio_calibration_dataset = (
+        Path(args.audio_calibration_dataset)
+        if args.audio_calibration_dataset is not None
+        else None
+    )
 
     if output_dir.exists() and args.overwrite_output:
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
-    records = load_records(calibration_jsonl, args.limit_records)
-    dataset = build_tokenized_dataset(records, tokenizer, args.max_seq_length)
-
-    print(
-        json.dumps(
-            {
-                "records_loaded": len(records),
-                "dataset_rows": len(dataset),
-                "min_tokens": min(len(row["input_ids"]) for row in dataset),
-                "max_tokens": max(len(row["input_ids"]) for row in dataset),
-                "tokenizer_class": tokenizer.__class__.__name__,
-                "tokenizer_module": tokenizer.__class__.__module__,
-                "vocab_size": getattr(tokenizer, "vocab_size", None),
-                "output_dir": str(output_dir),
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+    processor = tokenizer
+    records = []
+    if audio_calibration_dataset is None:
+        records = load_records(calibration_jsonl, args.limit_records)
+        dataset = build_tokenized_dataset(records, tokenizer, args.max_seq_length)
+        data_collator = "truncation"
+    else:
+        if args.batch_size != 1:
+            raise ValueError("--audio-calibration-dataset requires --batch-size 1")
+        # processor stays as tokenizer — the audio collator loads tensors from disk
+        # directly and does not need a Voxtral-specific processor.
+        # The HF dataset lives in the processor_dataset/ subdirectory; tensor paths
+        # in each row (inputs_embeds_path) are relative to the top-level corpus dir.
+        processor_dataset_dir = audio_calibration_dataset / "processor_dataset"
+        hf_dataset_path = processor_dataset_dir if processor_dataset_dir.exists() else audio_calibration_dataset
+        dataset = load_from_disk(str(hf_dataset_path))
+        if args.limit_records is not None:
+            dataset = dataset.select(range(min(args.limit_records, len(dataset))))
+        data_collator = make_audio_conditioned_collator(audio_calibration_dataset)
 
     model = VoxtralRealtimeForConditionalGeneration.from_pretrained(
         model_dir,
@@ -264,24 +515,98 @@ def main() -> None:
     model.eval()
     model.forward = MethodType(forward, model)
 
-    recipe = GPTQModifier(
-        scheme="W4A16",
-        targets=TARGETS,
-        ignore=IGNORE,
-        dampening_frac=args.dampening_frac,
-        actorder=args.actorder,
-        offload_hessians=True,
+    # SpinQuantModifier (and a few llm-compressor utilities) call helpers like
+    # get_head_dim() on `model.config` and assume a flat text-LLM config. Voxtral
+    # Realtime nests the relevant fields under `text_config`, so we expose
+    # the text-side fields at the top level. This is metadata-only: the model
+    # weights and forward path are unchanged.
+    if hasattr(model.config, "text_config"):
+        text_cfg = model.config.text_config
+        for attr in (
+            "head_dim",
+            "hidden_size",
+            "num_attention_heads",
+            "num_key_value_heads",
+            "num_hidden_layers",
+            "intermediate_size",
+            "vocab_size",
+            "max_position_embeddings",
+            "rms_norm_eps",
+        ):
+            if not hasattr(model.config, attr) and hasattr(text_cfg, attr):
+                setattr(model.config, attr, getattr(text_cfg, attr))
+
+    gptq_recipe = build_recipe(args, GPTQModifier)
+    recipe = gptq_recipe if isinstance(gptq_recipe, list) else [gptq_recipe]
+    if args.smoothquant:
+        recipe = [
+            SmoothQuantModifier(
+                smoothing_strength=args.smoothing_strength,
+                mappings=SMOOTHQUANT_MAPPINGS,
+                ignore=SMOOTHQUANT_IGNORE,
+            )
+        ] + recipe
+    if args.spinquant and args.quip:
+        raise ValueError("Use either --spinquant or --quip, not both.")
+    if args.spinquant:
+        rotations = [r.strip() for r in args.spinquant_rotations.split(",") if r.strip()]
+        recipe = [
+            SpinQuantModifier(
+                rotations=rotations,
+                transform_type=args.spinquant_transform_type,
+            )
+        ] + recipe
+    if args.quip:
+        rotations = [r.strip() for r in args.quip_rotations.split(",") if r.strip()]
+        # Constrain QuIP rotations to the same decoder projection set GPTQ
+        # quantizes. Without this QuIP also tries to rotate the small Linears
+        # in the audio adapter, which fails with "block_size must divide N"
+        # because adapter projections aren't multiples of 128.
+        recipe = [
+            QuIPModifier(
+                rotations=rotations,
+                transform_block_size=args.quip_transform_block_size,
+                transform_type="hadamard",
+                targets=TARGETS,
+                ignore=IGNORE,
+            )
+        ] + recipe
+    if len(recipe) == 1:
+        recipe = recipe[0]
+
+    print(
+        json.dumps(
+            {
+                "calibration_mode": "audio_conditioned"
+                if audio_calibration_dataset is not None
+                else "text",
+                "records_loaded": len(records) if records else len(dataset),
+                "dataset_rows": len(dataset),
+                "min_tokens": min(len(row["input_ids"]) for row in dataset),
+                "max_tokens": max(len(row["input_ids"]) for row in dataset),
+                "audio_calibration_dataset": str(audio_calibration_dataset)
+                if audio_calibration_dataset is not None
+                else None,
+                "tokenizer_class": tokenizer.__class__.__name__,
+                "tokenizer_module": tokenizer.__class__.__module__,
+                "vocab_size": getattr(tokenizer, "vocab_size", None),
+                "output_dir": str(output_dir),
+                "recipe": recipe_summary(recipe),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
     )
 
     oneshot(
         model=model,
-        processor=tokenizer,
+        processor=processor,
         recipe=recipe,
         dataset=dataset,
         num_calibration_samples=args.num_calibration_samples,
         max_seq_length=args.max_seq_length,
         batch_size=args.batch_size,
-        data_collator="truncation",
+        data_collator=data_collator,
         pad_to_max_length=False,
         shuffle_calibration_samples=False,
         output_dir=str(output_dir),

@@ -1,0 +1,1204 @@
+{
+  "label": "bf16_current_harness_novad_hint_retry2_ja100",
+  "model_path": "models/voxtral-realtime",
+  "config_path": "configs/vllm/bf16_current_harness.yaml",
+  "config_sha256": "e11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad",
+  "base_url": "http://127.0.0.1:8151/v1",
+  "served_model": "voxtral-realtime",
+  "evaluator_harness_version": "2026-04-24.bootstrap-ci-v1",
+  "prompt": "Transcribe this audio.",
+  "language_hint_mode": "fleurs_primary",
+  "temperature": null,
+  "vad_trim": {
+    "enabled": false,
+    "aggressiveness": 1,
+    "padding_ms": 200.0
+  },
+  "speech_gating": {
+    "enabled": false,
+    "frame_ms": 80.0,
+    "peak_threshold": 0.01,
+    "rms_threshold": 0.003,
+    "preserve_leading_silence_ms": 160.0,
+    "preserve_trailing_silence_ms": 160.0,
+    "compress_internal_silence_to_ms": null,
+    "min_internal_silence_run_ms": 640.0
+  },
+  "startup_seconds": 166.66685010499998,
+  "gpu_snapshot": {
+    "gpu_name": "NVIDIA GeForce RTX 5080",
+    "memory_used_mib": 14793,
+    "memory_total_mib": 16303,
+    "utilization_gpu_percent": 2
+  },
+  "first_request": {
+    "sample_id": "1828",
+    "reference": "インターネットで 敵対的環境コース について検索すると おそらく現地企業の住所が出てくるでしょう",
+    "prediction": "インターネットで敵対的環境コースについて検索すると、おそらく現地企業の住所が出てくるでしょう。",
+    "dataset_source": "google_fleurs",
+    "prompt": "Transcribe this audio.",
+    "language_hint_mode": "fleurs_primary",
+    "temperature": null,
+    "latency_seconds": 2.0663209470000083,
+    "audio_duration_seconds": 10.44,
+    "vad_trim_applied": false,
+    "vad_trim_changed_audio": false,
+    "vad_trim_seconds_removed": 0.0,
+    "vad_trim_fraction_removed": 0.0,
+    "vad_trim_duration_after_seconds": 10.44,
+    "gated_audio_duration_seconds": 10.44,
+    "speech_gating_seconds_removed": 0.0,
+    "speech_gating_fraction_removed": 0.0,
+    "quiet_audio_boosted": false,
+    "audio_gain_applied": 1.0,
+    "speech_gating_applied": false,
+    "speech_gating_changed_audio": false
+  },
+  "warmup": {
+    "script": "scripts/warm_fleurs_prefix_cache.py",
+    "ran_before_first_request": true,
+    "ran_before_timed_eval": true,
+    "report_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/reports/warmup_bf16_current_harness_novad_hint_retry2_ja100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_ja_jp_limit100.json",
+    "sample_id": "1828",
+    "language": "ja_jp",
+    "dataset_source": "google_fleurs",
+    "empty_prediction": false
+  },
+  "evaluation": {
+    "language": "ja_jp",
+    "dataset_source": "google_fleurs",
+    "samples_evaluated": 100,
+    "empty_prediction_count": 0,
+    "empty_retry_sample_count": 0,
+    "empty_retry_request_count": 0,
+    "wer_percent": 100.3154574132492,
+    "wer_bootstrap_ci": {
+      "low": 0.990909090909091,
+      "high": 1.0194174757281553,
+      "low_percent": 99.0909090909091,
+      "high_percent": 101.94174757281553
+    },
+    "wer_normalized_percent": 81.67701863354037,
+    "wer_normalized_bootstrap_ci": {
+      "low": 0.7621951219512195,
+      "high": 0.8668941979522184,
+      "low_percent": 76.21951219512195,
+      "high_percent": 86.68941979522185
+    },
+    "wer_open_asr_like_percent": 81.05590062111801,
+    "wer_open_asr_like_bootstrap_ci": {
+      "low": 0.7544910179640718,
+      "high": 0.8632218844984803,
+      "low_percent": 75.44910179640718,
+      "high_percent": 86.32218844984803
+    },
+    "cer_percent": 12.884250474383302,
+    "cer_normalized_percent": 8.89943074003795,
+    "cer_no_whitespace_normalized_percent": 6.735340729001585,
+    "cer_no_whitespace_normalized_bootstrap_ci": {
+      "low": 0.05334645669291339,
+      "high": 0.08403026682596575,
+      "low_percent": 5.334645669291339,
+      "high_percent": 8.403026682596575
+    },
+    "elapsed_seconds": 367.75283295599996,
+    "energy_joules": 97205.60380093378,
+    "emissions_kg": 0.019264017550372787,
+    "total_audio_seconds": 1302.5400000000004,
+    "audio_seconds_per_wall_second": 3.5418897783333834,
+    "samples_per_second": 0.2719217665740309,
+    "report_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/reports/fleurs_bf16_current_harness_novad_hint_retry2_ja100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_ja_jp_limit100.json",
+    "energy_report_path": null
+  },
+  "log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/logs/bf16_current_harness_novad_hint_retry2_ja100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_benchmark_server.log",
+  "measurement_summary": {
+    "slice": "ja_jp",
+    "limit": 100,
+    "model_label": "bf16_current_harness_novad_hint_retry2_ja100",
+    "config_hash": "e11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad",
+    "harness_git_sha": "a49d75d9962f155b5375567bfeed3cea148ff18d",
+    "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+    "wer_raw": 1.003154574132492,
+    "wer_raw_percent": 100.3154574132492,
+    "wer_raw_ci95": [
+      0.990909090909091,
+      1.0194174757281553
+    ],
+    "wer_raw_ci95_percent": [
+      99.0909090909091,
+      101.94174757281553
+    ],
+    "wer_normalized": 0.8167701863354038,
+    "wer_normalized_percent": 81.67701863354037,
+    "wer_normalized_ci95": [
+      0.7621951219512195,
+      0.8668941979522184
+    ],
+    "wer_normalized_ci95_percent": [
+      76.21951219512195,
+      86.68941979522185
+    ],
+    "cer_normalized_no_space": 0.06735340729001585,
+    "cer_normalized_no_space_percent": 6.735340729001585,
+    "cer_normalized_no_space_ci95": [
+      0.05334645669291339,
+      0.08403026682596575
+    ],
+    "cer_normalized_no_space_ci95_percent": [
+      5.334645669291339,
+      8.403026682596575
+    ],
+    "empty_prediction_count": 0,
+    "empty_prediction_ids": [],
+    "elapsed_seconds": 367.75283295599996,
+    "energy_joules": 97205.60380093378,
+    "emissions_kg": 0.019264017550372787,
+    "per_sample_wer": [
+      {
+        "id": "1828",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.75
+      },
+      {
+        "id": "1834",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1813",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.25
+      },
+      {
+        "id": "1869",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1744",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1731",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1910",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1771",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1764",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "2003",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1980",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1822",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1837",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.0
+      },
+      {
+        "id": "1736",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1980",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1942",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.75
+      },
+      {
+        "id": "1733",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1916",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1701",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1848",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1775",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1893",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1908",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1972",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1911",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1664",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1827",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1672",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.5
+      },
+      {
+        "id": "1861",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.3333333333333333
+      },
+      {
+        "id": "1843",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.75
+      },
+      {
+        "id": "1924",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1958",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1749",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1997",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6
+      },
+      {
+        "id": "1825",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1801",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1739",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1977",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1989",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1869",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1667",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1742",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1876",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1943",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.3333333333333333
+      },
+      {
+        "id": "1718",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1725",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1690",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1955",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1959",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1721",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1978",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1968",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1718",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.0
+      },
+      {
+        "id": "1974",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1920",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1733",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1902",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1718",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1750",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1983",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1672",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1806",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1869",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.3333333333333333
+      },
+      {
+        "id": "1801",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1699",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1897",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1973",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.8
+      },
+      {
+        "id": "1702",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1979",
+        "wer_raw": 3.0,
+        "wer_normalized": 3.0
+      },
+      {
+        "id": "1865",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1946",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1790",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.8333333333333334
+      },
+      {
+        "id": "1845",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1847",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.8571428571428571
+      },
+      {
+        "id": "1810",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.3333333333333333
+      },
+      {
+        "id": "1817",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1851",
+        "wer_raw": 0.75,
+        "wer_normalized": 0.75
+      },
+      {
+        "id": "1671",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1676",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.5
+      },
+      {
+        "id": "1809",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1853",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1692",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.5
+      },
+      {
+        "id": "1881",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.75
+      },
+      {
+        "id": "1735",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6
+      },
+      {
+        "id": "1766",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1767",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1838",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1756",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1988",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1962",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1974",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1779",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1676",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.0
+      },
+      {
+        "id": "1707",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1921",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.3333333333333333
+      },
+      {
+        "id": "1823",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1780",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1709",
+        "wer_raw": 1.0,
+        "wer_normalized": 0.6666666666666666
+      },
+      {
+        "id": "1793",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      },
+      {
+        "id": "1800",
+        "wer_raw": 1.0,
+        "wer_normalized": 1.0
+      }
+    ],
+    "server_log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/logs/bf16_current_harness_novad_hint_retry2_ja100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_benchmark_server.log"
+  },
+  "slice": "ja_jp",
+  "limit": 100,
+  "model_label": "bf16_current_harness_novad_hint_retry2_ja100",
+  "config_hash": "e11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad",
+  "harness_git_sha": "a49d75d9962f155b5375567bfeed3cea148ff18d",
+  "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+  "wer_raw": 1.003154574132492,
+  "wer_raw_percent": 100.3154574132492,
+  "wer_raw_ci95": [
+    0.990909090909091,
+    1.0194174757281553
+  ],
+  "wer_raw_ci95_percent": [
+    99.0909090909091,
+    101.94174757281553
+  ],
+  "wer_normalized": 0.8167701863354038,
+  "wer_normalized_percent": 81.67701863354037,
+  "wer_normalized_ci95": [
+    0.7621951219512195,
+    0.8668941979522184
+  ],
+  "wer_normalized_ci95_percent": [
+    76.21951219512195,
+    86.68941979522185
+  ],
+  "cer_normalized_no_space": 0.06735340729001585,
+  "cer_normalized_no_space_percent": 6.735340729001585,
+  "cer_normalized_no_space_ci95": [
+    0.05334645669291339,
+    0.08403026682596575
+  ],
+  "cer_normalized_no_space_ci95_percent": [
+    5.334645669291339,
+    8.403026682596575
+  ],
+  "empty_prediction_count": 0,
+  "empty_prediction_ids": [],
+  "elapsed_seconds": 367.75283295599996,
+  "energy_joules": 97205.60380093378,
+  "emissions_kg": 0.019264017550372787,
+  "per_sample_wer": [
+    {
+      "id": "1828",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.75
+    },
+    {
+      "id": "1834",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1813",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.25
+    },
+    {
+      "id": "1869",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1744",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1731",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1910",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1771",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1764",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "2003",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1980",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1822",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1837",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.0
+    },
+    {
+      "id": "1736",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1980",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1942",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.75
+    },
+    {
+      "id": "1733",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1916",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1701",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1848",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1775",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1893",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1908",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1972",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1911",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1664",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1827",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1672",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.5
+    },
+    {
+      "id": "1861",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.3333333333333333
+    },
+    {
+      "id": "1843",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.75
+    },
+    {
+      "id": "1924",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1958",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1749",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1997",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6
+    },
+    {
+      "id": "1825",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1801",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1739",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1977",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1989",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1869",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1667",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1742",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1876",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1943",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.3333333333333333
+    },
+    {
+      "id": "1718",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1725",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1690",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1955",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1959",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1721",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1978",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1968",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1718",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.0
+    },
+    {
+      "id": "1974",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1920",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1733",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1902",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1718",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1750",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1983",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1672",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1806",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1869",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.3333333333333333
+    },
+    {
+      "id": "1801",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1699",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1897",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1973",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.8
+    },
+    {
+      "id": "1702",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1979",
+      "wer_raw": 3.0,
+      "wer_normalized": 3.0
+    },
+    {
+      "id": "1865",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1946",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1790",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.8333333333333334
+    },
+    {
+      "id": "1845",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1847",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.8571428571428571
+    },
+    {
+      "id": "1810",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.3333333333333333
+    },
+    {
+      "id": "1817",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1851",
+      "wer_raw": 0.75,
+      "wer_normalized": 0.75
+    },
+    {
+      "id": "1671",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1676",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.5
+    },
+    {
+      "id": "1809",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1853",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1692",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.5
+    },
+    {
+      "id": "1881",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.75
+    },
+    {
+      "id": "1735",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6
+    },
+    {
+      "id": "1766",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1767",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1838",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1756",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1988",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1962",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1974",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1779",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1676",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.0
+    },
+    {
+      "id": "1707",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1921",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.3333333333333333
+    },
+    {
+      "id": "1823",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1780",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1709",
+      "wer_raw": 1.0,
+      "wer_normalized": 0.6666666666666666
+    },
+    {
+      "id": "1793",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    },
+    {
+      "id": "1800",
+      "wer_raw": 1.0,
+      "wer_normalized": 1.0
+    }
+  ],
+  "server_log_path": "/mnt/c/Users/ASUS/Music/Fine_tuning/logs/bf16_current_harness_novad_hint_retry2_ja100_cfge11485ba35efb447d553220736afd5dac71459e237b9b12c883fabca4bdfe5ad_benchmark_server.log"
+}

@@ -1,0 +1,11 @@
+# Shared evaluator utilities.
+-r requirements.txt
+
+# Voxtral Realtime runtime helpers used by the optional local probes and final validation.
+mistral_common[audio]>=1.9.0
+transformers>=5.2.0
+av>=17.0.0
+
+# vLLM is installed separately in the rental setup because the Voxtral Realtime path depends on
+# the current nightly CUDA wheel. On CUDA 12.x hosts, use the matching vLLM nightly wheel/index for
+# the installed Torch backend before running final_validation.sh.

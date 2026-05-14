@@ -29,7 +29,8 @@ site/
 
 models/
 artifacts/
-reports/
+reports/*
+!reports/team_status.md
 logs/
 tmp/
 tmp_hf_verify/

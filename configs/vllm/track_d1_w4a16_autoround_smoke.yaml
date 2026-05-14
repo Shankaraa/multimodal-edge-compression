@@ -1,0 +1,17 @@
+served_model_name: voxtral-realtime
+model_impl: vllm
+quantization: gptq_marlin
+dtype: half
+kv_cache_dtype: fp8_e4m3
+attention_backend: TRITON_ATTN
+tokenizer: /home/npci/voxtral-w4a16-final2-smoke
+tokenizer_mode: mistral
+max_model_len: 4096
+gpu_memory_utilization: 0.70
+max_num_batched_tokens: 4096
+max_num_seqs: 1
+enable_prefix_caching: true
+compilation_config:
+  cudagraph_mode: PIECEWISE
+enforce_eager: false
+disable_log_stats: true

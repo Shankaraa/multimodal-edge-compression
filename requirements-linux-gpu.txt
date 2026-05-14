@@ -15,6 +15,7 @@ llmcompressor
 
 # Manual step for vLLM nightly:
 # Prefer `uv` because the official vLLM docs recommend it for nightly wheels and CUDA selection.
-# On this machine, Torch is running with CUDA 13.0, so use the cu130 nightly index:
+# On CUDA 12.x L4 rentals, select the matching CUDA 12.x nightly wheel/index for the installed
+# Torch backend instead of copying a machine-specific CUDA 13 command.
 #   python -m pip install -U uv
-#   uv pip install -U vllm --torch-backend=cu130 --extra-index-url https://wheels.vllm.ai/nightly/cu130
+#   uv pip install -U vllm --torch-backend=<cuda12x-backend> --extra-index-url <matching-vllm-nightly-index>

@@ -108,21 +108,26 @@ def compute_folded_weights(
             if missing:
                 raise KeyError(f"Missing tensors for layer {layer}: {missing}")
 
+            original_norm = tensors.get_tensor(norm_key)
+            original_norm_dtype = str(original_norm.dtype).replace("torch.", "")
             w1 = tensors.get_tensor(w1_key).float()
             w2 = tensors.get_tensor(w2_key).float()
-            norm_weight = tensors.get_tensor(norm_key).float()
+            norm_weight = original_norm.float()
 
             hidden = functional.linear(t_cond, w1)
             hidden = functional.gelu(hidden)
             ada = functional.linear(hidden, w2).squeeze(0)
             modulation = 1.0 + ada
-            folded_weight = (norm_weight * modulation).to(tensors.get_tensor(norm_key).dtype)
+            folded_weight = (norm_weight * modulation).to(original_norm.dtype)
             folded[norm_key] = folded_weight.contiguous()
 
             layer_reports.append(
                 {
                     "layer": layer,
                     "norm_key": norm_key,
+                    "compute_dtype": "float32",
+                    "source_norm_dtype": original_norm_dtype,
+                    "saved_folded_dtype": str(folded_weight.dtype).replace("torch.", ""),
                     "modulation_min": float(modulation.min().item()),
                     "modulation_max": float(modulation.max().item()),
                     "modulation_mean": float(modulation.mean().item()),
@@ -271,6 +276,8 @@ def main() -> int:
         "out_dir": str(out_dir),
         "source_file": str(source_path),
         "delay_tokens": args.delay_tokens,
+        "fold_compute_dtype": "float32",
+        "fold_save_policy": "cast folded ffn_norm.weight back to each source tensor dtype at serialization time",
         "num_layers": args.num_layers,
         "folded_norm_keys": sorted(folded_tensors.keys()),
         "dry_run": bool(args.dry_run),

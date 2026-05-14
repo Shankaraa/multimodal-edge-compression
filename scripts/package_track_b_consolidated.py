@@ -102,6 +102,30 @@ def native_target_names(num_layers: int = 26) -> list[str]:
     return targets
 
 
+def native_target_names_for_layers(layers: list[int]) -> list[str]:
+    targets: list[str] = []
+    for layer in layers:
+        for proj in ["q_proj", "k_proj", "v_proj", "o_proj"]:
+            targets.append(
+                f"language_model.model.layers.{layer}.self_attn.{proj}"
+            )
+        for proj in ["gate_proj", "up_proj", "down_proj"]:
+            targets.append(f"language_model.model.layers.{layer}.mlp.{proj}")
+    return targets
+
+
+def native_targets_for_hf_target(target: str, num_layers: int = 26) -> list[str]:
+    if r"language_model\.model\.layers\.\d+" in target:
+        return native_target_names(num_layers)
+
+    layer_match = re.search(r"language_model\\\.model\\\.layers\\\.\(([^)]+)\)", target)
+    if layer_match:
+        layers = [int(item) for item in layer_match.group(1).split("|")]
+        return native_target_names_for_layers(layers)
+
+    return [target]
+
+
 def native_ignore_names() -> list[str]:
     return [
         r"re:^whisper_encoder(\.|$)",
@@ -129,8 +153,11 @@ def update_config(source_config: Path, hf_artifact_config: Path, output_config: 
     config.pop("use_cache", None)
 
     quantization_config = config["quantization_config"]
-    group = quantization_config["config_groups"]["group_0"]
-    group["targets"] = native_target_names()
+    for group in quantization_config["config_groups"].values():
+        mapped_targets: list[str] = []
+        for target in group.get("targets", []):
+            mapped_targets.extend(native_targets_for_hf_target(target))
+        group["targets"] = mapped_targets
     quantization_config["ignore"] = native_ignore_names()
     quantization_config["kv_cache_scheme"] = {
         "num_bits": 8,
