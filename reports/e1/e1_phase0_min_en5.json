@@ -1,0 +1,630 @@
+{
+  "created_at": "2026-05-15T05:37:51.317766+00:00",
+  "harness_version": "2026-04-24.bootstrap-ci-v1",
+  "backend": "vllm_api",
+  "backend_details": {
+    "backend": "vllm_api",
+    "base_url": "http://localhost:8086/v1",
+    "model": "voxtral-realtime",
+    "prompt": "Transcribe this audio.",
+    "language_hint_mode": "none",
+    "temperature": null,
+    "target_streaming_delay_ms": null,
+    "max_tokens": 1000
+  },
+  "target_streaming_delay_ms": null,
+  "limit_per_language": 5,
+  "speech_gating": {
+    "enabled": true,
+    "frame_ms": 80.0,
+    "peak_threshold": 0.01,
+    "rms_threshold": 0.003,
+    "preserve_leading_silence_ms": 160.0,
+    "preserve_trailing_silence_ms": 160.0,
+    "compress_internal_silence_to_ms": 160.0,
+    "min_internal_silence_run_ms": 320.0
+  },
+  "vad_trim": {
+    "enabled": true,
+    "aggressiveness": 1,
+    "padding_ms": 200.0
+  },
+  "empty_retry_count": 0,
+  "results": [
+    {
+      "language": "en_us",
+      "dataset_source": "google_fleurs",
+      "samples_evaluated": 5,
+      "hyp_chars_total": 586,
+      "ref_chars_total": 568,
+      "verbosity_ratio": 1.0316901408450705,
+      "verbosity_drift_warning": false,
+      "verbosity_drift_warning_range": [
+        0.95,
+        1.05
+      ],
+      "empty_prediction_count": 0,
+      "empty_retry_sample_count": 0,
+      "empty_retry_request_count": 0,
+      "latency_total_seconds_p50": 1.186360561000015,
+      "latency_total_seconds_p95": 6.310498986200013,
+      "ttft_seconds_p50": null,
+      "ttft_seconds_p95": null,
+      "streaming_tokens_per_second_p50": null,
+      "streaming_tokens_per_second_p95": null,
+      "realtime_failure_threshold_note": "This non-streaming /v1/audio/transcriptions harness would fail any total-utterance p95 constraint below 6.310499s. TTFT and streaming tokens/sec are unavailable unless a streaming endpoint is used.",
+      "metric_normalization": "Unicode NFKC, casefold, strip punctuation and symbols, remove controls, collapse whitespace",
+      "wer": 0.20388349514563106,
+      "wer_percent": 20.388349514563107,
+      "wer_bootstrap_ci": {
+        "low": 0.17054263565891473,
+        "high": 0.25925925925925924,
+        "low_percent": 17.05426356589147,
+        "high_percent": 25.925925925925924
+      },
+      "cer": 0.058098591549295774,
+      "cer_percent": 5.809859154929577,
+      "cer_no_whitespace": 0.06595744680851064,
+      "cer_no_whitespace_percent": 6.595744680851063,
+      "wer_normalized": 0.057692307692307696,
+      "wer_normalized_percent": 5.769230769230769,
+      "wer_normalized_bootstrap_ci": {
+        "low": 0.03,
+        "high": 0.09195402298850575,
+        "low_percent": 3.0,
+        "high_percent": 9.195402298850574
+      },
+      "cer_normalized": 0.02464788732394366,
+      "cer_normalized_percent": 2.464788732394366,
+      "cer_no_whitespace_normalized": 0.02771855010660981,
+      "cer_no_whitespace_normalized_percent": 2.771855010660981,
+      "cer_no_whitespace_normalized_bootstrap_ci": {
+        "low": 0.008733624454148471,
+        "high": 0.06631299734748011,
+        "low_percent": 0.8733624454148471,
+        "high_percent": 6.631299734748011
+      },
+      "wer_open_asr_like_bootstrap_ci": {
+        "low": 0.03,
+        "high": 0.09195402298850575,
+        "low_percent": 3.0,
+        "high_percent": 9.195402298850574
+      },
+      "metric_profiles": {
+        "raw": {
+          "description": "No normalization; direct raw transcript comparison",
+          "wer": 0.20388349514563106,
+          "wer_percent": 20.388349514563107,
+          "cer": 0.058098591549295774,
+          "cer_percent": 5.809859154929577,
+          "cer_no_whitespace": 0.06595744680851064,
+          "cer_no_whitespace_percent": 6.595744680851063,
+          "bootstrap_ci": {
+            "method": "utterance_resampling_with_replacement",
+            "unit": "sample",
+            "iterations": 1000,
+            "confidence_level": 0.95,
+            "seed": 1729,
+            "wer": {
+              "low": 0.17054263565891473,
+              "high": 0.25925925925925924,
+              "low_percent": 17.05426356589147,
+              "high_percent": 25.925925925925924
+            },
+            "cer": {
+              "low": 0.04604051565377532,
+              "high": 0.10412147505422993,
+              "low_percent": 4.6040515653775325,
+              "high_percent": 10.412147505422993
+            },
+            "cer_no_whitespace": {
+              "low": 0.04259259259259259,
+              "high": 0.1038961038961039,
+              "low_percent": 4.2592592592592595,
+              "high_percent": 10.38961038961039
+            }
+          }
+        },
+        "local_asr": {
+          "description": "Unicode NFKC, casefold, strip punctuation and symbols, remove controls, collapse whitespace",
+          "wer": 0.057692307692307696,
+          "wer_percent": 5.769230769230769,
+          "cer": 0.02464788732394366,
+          "cer_percent": 2.464788732394366,
+          "cer_no_whitespace": 0.02771855010660981,
+          "cer_no_whitespace_percent": 2.771855010660981,
+          "bootstrap_ci": {
+            "method": "utterance_resampling_with_replacement",
+            "unit": "sample",
+            "iterations": 1000,
+            "confidence_level": 0.95,
+            "seed": 1729,
+            "wer": {
+              "low": 0.03,
+              "high": 0.09195402298850575,
+              "low_percent": 3.0,
+              "high_percent": 9.195402298850574
+            },
+            "cer": {
+              "low": 0.008368200836820083,
+              "high": 0.05530973451327434,
+              "low_percent": 0.8368200836820083,
+              "high_percent": 5.530973451327434
+            },
+            "cer_no_whitespace": {
+              "low": 0.008733624454148471,
+              "high": 0.06631299734748011,
+              "low_percent": 0.8733624454148471,
+              "high_percent": 6.631299734748011
+            }
+          }
+        },
+        "open_asr_like": {
+          "description": "Inspired by huggingface/open_asr_leaderboard: Whisper EnglishTextNormalizer for English when available; multilingual symbol stripping with diacritics preserved and optional digit-to-words normalization for non-English",
+          "wer": 0.057692307692307696,
+          "wer_percent": 5.769230769230769,
+          "cer": 0.02464788732394366,
+          "cer_percent": 2.464788732394366,
+          "cer_no_whitespace": 0.02771855010660981,
+          "cer_no_whitespace_percent": 2.771855010660981,
+          "bootstrap_ci": {
+            "method": "utterance_resampling_with_replacement",
+            "unit": "sample",
+            "iterations": 1000,
+            "confidence_level": 0.95,
+            "seed": 1729,
+            "wer": {
+              "low": 0.03,
+              "high": 0.09195402298850575,
+              "low_percent": 3.0,
+              "high_percent": 9.195402298850574
+            },
+            "cer": {
+              "low": 0.008368200836820083,
+              "high": 0.05530973451327434,
+              "low_percent": 0.8368200836820083,
+              "high_percent": 5.530973451327434
+            },
+            "cer_no_whitespace": {
+              "low": 0.008733624454148471,
+              "high": 0.06631299734748011,
+              "low_percent": 0.8733624454148471,
+              "high_percent": 6.631299734748011
+            }
+          }
+        }
+      },
+      "samples": [
+        {
+          "id": "1904",
+          "reference": "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+          "prediction": " However, due to the slow communication channels, styles in the West could lag behind by 25 to 30 years.",
+          "hyp_chars": 104,
+          "ref_chars": 99,
+          "wer_raw": 0.21052631578947367,
+          "wer_normalized": 0.05263157894736842,
+          "cer_normalized_no_whitespace": 0.012345679012345678,
+          "latency_total_seconds": 7.532208,
+          "latency_attempt_seconds": [
+            7.532207
+          ],
+          "ttft_seconds": null,
+          "streaming_tokens_per_second": null,
+          "audio_duration_seconds": 10.56,
+          "audio_peak_abs_before": 0.037966,
+          "audio_peak_abs_after": 0.60172,
+          "audio_rms_before": 0.003723,
+          "audio_rms_after": 0.063894,
+          "audio_gain_applied": 1.0,
+          "quiet_audio_boosted": false,
+          "lufs_normalization_applied": true,
+          "lufs_target": -23.0,
+          "lufs_max_gain_db": 24.0,
+          "lufs_integrated_before": -47.848469,
+          "lufs_gain_db": 24.0,
+          "lufs_changed_audio": true,
+          "vad_trim_applied": true,
+          "vad_trim_changed_audio": true,
+          "vad_trim_duration_before_seconds": 10.56,
+          "vad_trim_duration_after_seconds": 8.99,
+          "vad_trim_seconds_removed": 1.57,
+          "vad_trim_fraction_removed": 0.148674,
+          "vad_trim_leading_trimmed_seconds": 0.0,
+          "vad_trim_trailing_trimmed_seconds": 1.57,
+          "vad_trim_frame_count": 352,
+          "vad_trim_voiced_frame_count": 238,
+          "speech_gating_applied": true,
+          "speech_gating_changed_audio": false,
+          "speech_gating_duration_before_seconds": 8.99,
+          "speech_gating_duration_after_seconds": 8.99,
+          "speech_gating_seconds_removed": 0.0,
+          "speech_gating_fraction_removed": 0.0,
+          "speech_gating_leading_trimmed_seconds": 0.0,
+          "speech_gating_trailing_trimmed_seconds": 0.0,
+          "speech_gating_internal_trimmed_seconds": 0.0,
+          "speech_gating_internal_spans_compressed": 0,
+          "empty_prediction": false,
+          "empty_retry_attempts": 0
+        },
+        {
+          "id": "1675",
+          "reference": "all nouns alongside the word sie for you always begin with a capital letter even in the middle of a sentence",
+          "prediction": " All nouns alongside the word safe for you always begin with a capital letter, even in the middle of a sentence.",
+          "hyp_chars": 112,
+          "ref_chars": 108,
+          "wer_raw": 0.19047619047619047,
+          "wer_normalized": 0.047619047619047616,
+          "cer_normalized_no_whitespace": 0.022727272727272728,
+          "latency_total_seconds": 1.186361,
+          "latency_attempt_seconds": [
+            1.186358
+          ],
+          "ttft_seconds": null,
+          "streaming_tokens_per_second": null,
+          "audio_duration_seconds": 8.76,
+          "audio_peak_abs_before": 0.425497,
+          "audio_peak_abs_after": 0.374585,
+          "audio_rms_before": 0.083708,
+          "audio_rms_after": 0.073692,
+          "audio_gain_applied": 1.0,
+          "quiet_audio_boosted": false,
+          "lufs_normalization_applied": true,
+          "lufs_target": -23.0,
+          "lufs_max_gain_db": 24.0,
+          "lufs_integrated_before": -21.893079,
+          "lufs_gain_db": -1.106921,
+          "lufs_changed_audio": true,
+          "vad_trim_applied": true,
+          "vad_trim_changed_audio": false,
+          "vad_trim_duration_before_seconds": 8.76,
+          "vad_trim_duration_after_seconds": 8.76,
+          "vad_trim_seconds_removed": 0.0,
+          "vad_trim_fraction_removed": 0.0,
+          "vad_trim_leading_trimmed_seconds": 0.0,
+          "vad_trim_trailing_trimmed_seconds": 0.0,
+          "vad_trim_frame_count": 292,
+          "vad_trim_voiced_frame_count": 281,
+          "speech_gating_applied": true,
+          "speech_gating_changed_audio": false,
+          "speech_gating_duration_before_seconds": 8.76,
+          "speech_gating_duration_after_seconds": 8.76,
+          "speech_gating_seconds_removed": 0.0,
+          "speech_gating_fraction_removed": 0.0,
+          "speech_gating_leading_trimmed_seconds": 0.0,
+          "speech_gating_trailing_trimmed_seconds": 0.0,
+          "speech_gating_internal_trimmed_seconds": 0.0,
+          "speech_gating_internal_spans_compressed": 0,
+          "empty_prediction": false,
+          "empty_retry_attempts": 0
+        },
+        {
+          "id": "1950",
+          "reference": "to the north and within easy reach is the romantic and fascinating town of sintra and which was made famous to foreigners after a glowing account of its splendours recorded by lord byron",
+          "prediction": " To the north and within easy reach is the romantic and fascinating town of Sintra and which was made famous to foreigners after a glowing account of its splendor is recorded by Lord Byron.",
+          "hyp_chars": 189,
+          "ref_chars": 186,
+          "wer_raw": 0.18181818181818182,
+          "wer_normalized": 0.06060606060606061,
+          "cer_normalized_no_whitespace": 0.012987012987012988,
+          "latency_total_seconds": 1.423663,
+          "latency_attempt_seconds": [
+            1.423661
+          ],
+          "ttft_seconds": null,
+          "streaming_tokens_per_second": null,
+          "audio_duration_seconds": 11.46,
+          "audio_peak_abs_before": 0.006063,
+          "audio_peak_abs_after": 0.096092,
+          "audio_rms_before": 0.000791,
+          "audio_rms_after": 0.012968,
+          "audio_gain_applied": 1.0,
+          "quiet_audio_boosted": false,
+          "lufs_normalization_applied": true,
+          "lufs_target": -23.0,
+          "lufs_max_gain_db": 24.0,
+          "lufs_integrated_before": -61.817343,
+          "lufs_gain_db": 24.0,
+          "lufs_changed_audio": true,
+          "vad_trim_applied": true,
+          "vad_trim_changed_audio": true,
+          "vad_trim_duration_before_seconds": 11.46,
+          "vad_trim_duration_after_seconds": 11.12,
+          "vad_trim_seconds_removed": 0.34,
+          "vad_trim_fraction_removed": 0.029668,
+          "vad_trim_leading_trimmed_seconds": 0.0,
+          "vad_trim_trailing_trimmed_seconds": 0.34,
+          "vad_trim_frame_count": 382,
+          "vad_trim_voiced_frame_count": 350,
+          "speech_gating_applied": true,
+          "speech_gating_changed_audio": true,
+          "speech_gating_duration_before_seconds": 11.12,
+          "speech_gating_duration_after_seconds": 10.72,
+          "speech_gating_seconds_removed": 0.4,
+          "speech_gating_fraction_removed": 0.035971,
+          "speech_gating_leading_trimmed_seconds": 0.16,
+          "speech_gating_trailing_trimmed_seconds": 0.24,
+          "speech_gating_internal_trimmed_seconds": 0.0,
+          "speech_gating_internal_spans_compressed": 0,
+          "empty_prediction": false,
+          "empty_retry_attempts": 0
+        },
+        {
+          "id": "1728",
+          "reference": "the cabbage juice changes color depending on how acidic or basic alkaline the chemical is",
+          "prediction": " The cabbage juice changes color depending on how aesthetic, basic, alkaline the chemical is.",
+          "hyp_chars": 93,
+          "ref_chars": 89,
+          "wer_raw": 0.3333333333333333,
+          "wer_normalized": 0.13333333333333333,
+          "cer_normalized_no_whitespace": 0.10666666666666667,
+          "latency_total_seconds": 0.733185,
+          "latency_attempt_seconds": [
+            0.733184
+          ],
+          "ttft_seconds": null,
+          "streaming_tokens_per_second": null,
+          "audio_duration_seconds": 5.76,
+          "audio_peak_abs_before": 0.00602,
+          "audio_peak_abs_after": 0.095408,
+          "audio_rms_before": 0.000694,
+          "audio_rms_after": 0.011666,
+          "audio_gain_applied": 1.0,
+          "quiet_audio_boosted": false,
+          "lufs_normalization_applied": true,
+          "lufs_target": -23.0,
+          "lufs_max_gain_db": 24.0,
+          "lufs_integrated_before": -62.550499,
+          "lufs_gain_db": 24.0,
+          "lufs_changed_audio": true,
+          "vad_trim_applied": true,
+          "vad_trim_changed_audio": true,
+          "vad_trim_duration_before_seconds": 5.76,
+          "vad_trim_duration_after_seconds": 5.72,
+          "vad_trim_seconds_removed": 0.04,
+          "vad_trim_fraction_removed": 0.006944,
+          "vad_trim_leading_trimmed_seconds": 0.0,
+          "vad_trim_trailing_trimmed_seconds": 0.04,
+          "vad_trim_frame_count": 192,
+          "vad_trim_voiced_frame_count": 172,
+          "speech_gating_applied": true,
+          "speech_gating_changed_audio": true,
+          "speech_gating_duration_before_seconds": 5.72,
+          "speech_gating_duration_after_seconds": 5.12,
+          "speech_gating_seconds_removed": 0.6,
+          "speech_gating_fraction_removed": 0.104895,
+          "speech_gating_leading_trimmed_seconds": 0.08,
+          "speech_gating_trailing_trimmed_seconds": 0.52,
+          "speech_gating_internal_trimmed_seconds": 0.0,
+          "speech_gating_internal_spans_compressed": 0,
+          "empty_prediction": false,
+          "empty_retry_attempts": 0
+        },
+        {
+          "id": "1972",
+          "reference": "many people don't think about them as dinosaurs because they have feathers and can fly",
+          "prediction": " Many people don't think about them as dinosaurs because they have feathers and can fly.",
+          "hyp_chars": 88,
+          "ref_chars": 86,
+          "wer_raw": 0.13333333333333333,
+          "wer_normalized": 0.0,
+          "cer_normalized_no_whitespace": 0.0,
+          "latency_total_seconds": 0.597049,
+          "latency_attempt_seconds": [
+            0.597048
+          ],
+          "ttft_seconds": null,
+          "streaming_tokens_per_second": null,
+          "audio_duration_seconds": 4.32,
+          "audio_peak_abs_before": 0.003458,
+          "audio_peak_abs_after": 0.054802,
+          "audio_rms_before": 0.000478,
+          "audio_rms_after": 0.007923,
+          "audio_gain_applied": 1.0,
+          "quiet_audio_boosted": false,
+          "lufs_normalization_applied": true,
+          "lufs_target": -23.0,
+          "lufs_max_gain_db": 24.0,
+          "lufs_integrated_before": -65.954265,
+          "lufs_gain_db": 24.0,
+          "lufs_changed_audio": true,
+          "vad_trim_applied": true,
+          "vad_trim_changed_audio": true,
+          "vad_trim_duration_before_seconds": 4.32,
+          "vad_trim_duration_after_seconds": 4.01,
+          "vad_trim_seconds_removed": 0.31,
+          "vad_trim_fraction_removed": 0.071759,
+          "vad_trim_leading_trimmed_seconds": 0.0,
+          "vad_trim_trailing_trimmed_seconds": 0.31,
+          "vad_trim_frame_count": 144,
+          "vad_trim_voiced_frame_count": 125,
+          "speech_gating_applied": true,
+          "speech_gating_changed_audio": true,
+          "speech_gating_duration_before_seconds": 4.01,
+          "speech_gating_duration_after_seconds": 3.92,
+          "speech_gating_seconds_removed": 0.09,
+          "speech_gating_fraction_removed": 0.022444,
+          "speech_gating_leading_trimmed_seconds": 0.0,
+          "speech_gating_trailing_trimmed_seconds": 0.09,
+          "speech_gating_internal_trimmed_seconds": 0.0,
+          "speech_gating_internal_spans_compressed": 0,
+          "empty_prediction": false,
+          "empty_retry_attempts": 0
+        }
+      ]
+    }
+  ],
+  "verbosity_drift_warnings": [],
+  "measurement_summaries": [
+    {
+      "slice": "en_us",
+      "limit": 5,
+      "model_label": "voxtral-realtime",
+      "config_hash": null,
+      "harness_git_sha": "0dc523cc99a73792983599c24cdd5bfc49fb9875",
+      "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+      "wer_raw": 0.20388349514563106,
+      "wer_raw_percent": 20.388349514563107,
+      "wer_raw_ci95": [
+        0.17054263565891473,
+        0.25925925925925924
+      ],
+      "wer_raw_ci95_percent": [
+        17.05426356589147,
+        25.925925925925924
+      ],
+      "wer_normalized": 0.057692307692307696,
+      "wer_normalized_percent": 5.769230769230769,
+      "wer_normalized_ci95": [
+        0.03,
+        0.09195402298850575
+      ],
+      "wer_normalized_ci95_percent": [
+        3.0,
+        9.195402298850574
+      ],
+      "cer_normalized_no_space": 0.02771855010660981,
+      "cer_normalized_no_space_percent": 2.771855010660981,
+      "cer_normalized_no_space_ci95": [
+        0.008733624454148471,
+        0.06631299734748011
+      ],
+      "cer_normalized_no_space_ci95_percent": [
+        0.8733624454148471,
+        6.631299734748011
+      ],
+      "hyp_chars_total": 586,
+      "ref_chars_total": 568,
+      "verbosity_ratio": 1.0316901408450705,
+      "verbosity_drift_warning": false,
+      "verbosity_drift_warning_range": [
+        0.95,
+        1.05
+      ],
+      "empty_prediction_count": 0,
+      "empty_prediction_ids": [],
+      "elapsed_seconds": null,
+      "energy_joules": null,
+      "emissions_kg": null,
+      "ttft_seconds_p50": null,
+      "ttft_seconds_p95": null,
+      "latency_total_seconds_p50": 1.186360561000015,
+      "latency_total_seconds_p95": 6.310498986200013,
+      "streaming_tokens_per_second_p50": null,
+      "streaming_tokens_per_second_p95": null,
+      "realtime_failure_threshold_note": "This non-streaming /v1/audio/transcriptions harness would fail any total-utterance p95 constraint below 6.310499s. TTFT and streaming tokens/sec are unavailable unless a streaming endpoint is used.",
+      "per_sample_wer": [
+        {
+          "id": "1904",
+          "wer_raw": 0.21052631578947367,
+          "wer_normalized": 0.05263157894736842
+        },
+        {
+          "id": "1675",
+          "wer_raw": 0.19047619047619047,
+          "wer_normalized": 0.047619047619047616
+        },
+        {
+          "id": "1950",
+          "wer_raw": 0.18181818181818182,
+          "wer_normalized": 0.06060606060606061
+        },
+        {
+          "id": "1728",
+          "wer_raw": 0.3333333333333333,
+          "wer_normalized": 0.13333333333333333
+        },
+        {
+          "id": "1972",
+          "wer_raw": 0.13333333333333333,
+          "wer_normalized": 0.0
+        }
+      ],
+      "server_log_path": null
+    }
+  ],
+  "slice": "en_us",
+  "limit": 5,
+  "model_label": "voxtral-realtime",
+  "config_hash": null,
+  "harness_git_sha": "0dc523cc99a73792983599c24cdd5bfc49fb9875",
+  "normalization_version": "f36271e478168f7a5021aba34ec107724d64738f74f6e5fb379aa676865dbc83",
+  "wer_raw": 0.20388349514563106,
+  "wer_raw_percent": 20.388349514563107,
+  "wer_raw_ci95": [
+    0.17054263565891473,
+    0.25925925925925924
+  ],
+  "wer_raw_ci95_percent": [
+    17.05426356589147,
+    25.925925925925924
+  ],
+  "wer_normalized": 0.057692307692307696,
+  "wer_normalized_percent": 5.769230769230769,
+  "wer_normalized_ci95": [
+    0.03,
+    0.09195402298850575
+  ],
+  "wer_normalized_ci95_percent": [
+    3.0,
+    9.195402298850574
+  ],
+  "cer_normalized_no_space": 0.02771855010660981,
+  "cer_normalized_no_space_percent": 2.771855010660981,
+  "cer_normalized_no_space_ci95": [
+    0.008733624454148471,
+    0.06631299734748011
+  ],
+  "cer_normalized_no_space_ci95_percent": [
+    0.8733624454148471,
+    6.631299734748011
+  ],
+  "hyp_chars_total": 586,
+  "ref_chars_total": 568,
+  "verbosity_ratio": 1.0316901408450705,
+  "verbosity_drift_warning": false,
+  "verbosity_drift_warning_range": [
+    0.95,
+    1.05
+  ],
+  "empty_prediction_count": 0,
+  "empty_prediction_ids": [],
+  "elapsed_seconds": null,
+  "energy_joules": null,
+  "emissions_kg": null,
+  "ttft_seconds_p50": null,
+  "ttft_seconds_p95": null,
+  "latency_total_seconds_p50": 1.186360561000015,
+  "latency_total_seconds_p95": 6.310498986200013,
+  "streaming_tokens_per_second_p50": null,
+  "streaming_tokens_per_second_p95": null,
+  "realtime_failure_threshold_note": "This non-streaming /v1/audio/transcriptions harness would fail any total-utterance p95 constraint below 6.310499s. TTFT and streaming tokens/sec are unavailable unless a streaming endpoint is used.",
+  "per_sample_wer": [
+    {
+      "id": "1904",
+      "wer_raw": 0.21052631578947367,
+      "wer_normalized": 0.05263157894736842
+    },
+    {
+      "id": "1675",
+      "wer_raw": 0.19047619047619047,
+      "wer_normalized": 0.047619047619047616
+    },
+    {
+      "id": "1950",
+      "wer_raw": 0.18181818181818182,
+      "wer_normalized": 0.06060606060606061
+    },
+    {
+      "id": "1728",
+      "wer_raw": 0.3333333333333333,
+      "wer_normalized": 0.13333333333333333
+    },
+    {
+      "id": "1972",
+      "wer_raw": 0.13333333333333333,
+      "wer_normalized": 0.0
+    }
+  ],
+  "server_log_path": null,
+  "report_path": "reports/e1/e1_phase0_min_en5.json"
+}
