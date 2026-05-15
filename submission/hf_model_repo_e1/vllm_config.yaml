@@ -1,0 +1,20 @@
+model: .
+served_model_name: voxtral-realtime
+quantization: compressed-tensors
+kv_cache_dtype: fp8_e4m3
+attention_backend: TRITON_ATTN
+tokenizer: .
+tokenizer_mode: mistral
+max_model_len: 4096
+gpu_memory_utilization: 0.85
+max_num_seqs: 1
+max_num_batched_tokens: 4096
+enable_prefix_caching: true
+compilation_config:
+  cudagraph_mode: PIECEWISE
+disable_log_stats: true
+speculative_config:
+  method: ngram
+  num_speculative_tokens: 1
+  prompt_lookup_max: 2
+  prompt_lookup_min: 1
