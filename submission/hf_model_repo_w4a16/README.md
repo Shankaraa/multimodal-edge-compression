@@ -24,6 +24,17 @@ serving with **~42% lower energy than the FP8 baseline on NVIDIA L4 24 GB** on t
 canonical 4-language evaluation set, at **4.07 GB on disk** (≈50% of FP8,
 ≈25% of BF16).
 
+To our knowledge this is the **first published audio-conditioned 4-bit
+quantization of `Voxtral-Mini-4B-Realtime-2602`**. Existing public 4-bit
+variants of this base model (GGUF, MLX, ExecuTorch) target different
+hardware (browser / Apple Silicon / edge CPU) and report substantial
+quality regression — published GGUF Q4_0 numbers, for example, show EN
+FLEURS WER degrading from 4.90% (BF16) to 8.49% (Q4_0), a 73% relative
+increase. Audio-conditioned calibration on real decoder embeddings keeps
+this W4A16 model within 1.25× of the BF16 baseline on every
+Voxtral-supported FLEURS language and beats the BF16 baseline outright
+on 9 of 13.
+
 ## Quick facts
 
 | Field | Value |

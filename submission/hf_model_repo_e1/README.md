@@ -23,6 +23,17 @@ AI Challenge, this artifact delivers **−54.7% energy on the canonical
 4-language evaluation set** while maintaining or beating the BF16
 quality ceiling on all 13 FLEURS languages.
 
+To our knowledge this is the **first published audio-conditioned 4-bit
+quantization of `Voxtral-Mini-4B-Realtime-2602`**. Existing public 4-bit
+variants of this base model target a different hardware story (browser,
+Apple Silicon, edge CPU via GGUF / MLX / ExecuTorch) and report
+significant quality regression — e.g. published GGUF Q4_0 numbers show
+EN FLEURS WER degrading from 4.90% (BF16) to 8.49% (Q4_0), a 73%
+relative increase. The audio-conditioned calibration used here keeps
+W4A16 quality within 1.25× of the BF16 baseline on every Voxtral-
+supported FLEURS language, and beats the BF16 baseline outright on 7 of
+13 slices (full quality-gate table below).
+
 ## Quick facts
 
 | Field | Value |
