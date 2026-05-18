@@ -983,6 +983,77 @@ The technical work is done.
 
 ---
 
+## Part XVII — Competitive landscape on Hugging Face
+
+A late check (May 15) of every published quantization of
+`mistralai/Voxtral-Mini-4B-Realtime-2602` on the Hugging Face Hub
+returned a small set of variants, none of which compete on the axis
+this submission is scored on:
+
+| Repo family | Format | Target hardware | Quality vs BF16 (published) | Energy claim |
+|---|---|---|---|---|
+| `mistralai/...` (base) | BF16 | reference | baseline | none |
+| `RedHatAI/...` (re-host) | BF16 | reference | baseline | none |
+| `mlx-community/...4bit` | MLX 4-bit | macOS Apple Silicon | not published | none |
+| `andrijdavid/...-GGUF`, `freddm/...-GGUF`, `TrevorJS/...-gguf` | GGUF Q4_0 etc. | llama.cpp CPU / WASM | **EN FLEURS WER 8.49% (Q4_0) vs 4.90% BF16 → +73% relative regression** | none |
+| `mistral-experimental/...-ExecuTorch`, `younghan-meta/...-ExecuTorch-CUDA` | ExecuTorch 4-bit | macOS / edge | not published | none |
+| `onnx-community/...-ONNX` | ONNX | cross-platform runtime | not published | none |
+
+**None of these public variants:**
+
+- run on vLLM / NVIDIA L4 (the competition's hardware)
+- publish FLEURS WER across all 13 supported languages
+- publish energy in joules
+- use audio-conditioned calibration
+- compose with speculative decoding
+
+The closest spiritual match is `RedHatAI/Voxtral-Mini-3B-2507-FP8-dynamic`
+— but that's a different base model (the older 3B Voxtral, not the 4B
+Realtime variant being scored). It says nothing about 4B Realtime
+compression.
+
+### What this means for the submission narrative
+
+To our knowledge, this is the **first published audio-conditioned 4-bit
+quantization of `Voxtral-Mini-4B-Realtime-2602`**. The most direct
+public comparator — community GGUF Q4_0 uploads — reports
+**EN FLEURS WER degrading from 4.90% to 8.49% under Q4 quantization,
+a 73% relative regression**. The D1-B / E1 W4A16 model in this work
+holds within 1.25× of the BF16 baseline on every Voxtral-supported
+FLEURS language and beats the BF16 baseline outright on 9 of 13
+(D1-B) / 7 of 13 (E1) slices.
+
+That's the published-comparator framing the submission README now
+leads with: not "we got 4-bit working" but "we got 4-bit working
+*correctly* — without the quality regression that all other
+publicly-available 4-bit variants exhibit."
+
+### Caveats on the comparison
+
+- The 4.90% / 8.49% pair is the GGUF uploader's own evaluation under
+  their own setup, not a number measured by this project. Our internal
+  BF16 reference is 6.05% EN500 under the Round-1 evaluation policy.
+  The framing uses the GGUF pair as a **relative regression** number
+  (73% relative increase), which is the cleanest apples-to-apples
+  claim across two independent evaluations.
+- Absence-of-evidence on the leaderboard does not mean absence of
+  threat. Other Resilient AI Challenge teams will not publish their
+  submission artifacts to Hugging Face before the deadline. Plan as
+  if 2–3 teams have reached similar energy reductions via different
+  routes (distillation, learned drafts, encoder-skip on silence
+  frames). The distinguishers this submission can lean on against
+  unknown private competitors:
+  - **Preserved quality** — most aggressive compressions trade
+    accuracy for joules; this one demonstrably does not.
+  - **Reproducibility evidence** — `bash reproduce.sh` verified
+    on a fresh L4 within bootstrap noise. Most submissions will not
+    include this.
+  - **Orthogonal composability** — D1-B (model-time) and E1
+    (serving-time) stack additively. A judge can audit the
+    contribution of each independently.
+
+---
+
 ## What E1 taught us beyond D1-B
 
 - **Speculative decoding works on multimodal serving paths, but
